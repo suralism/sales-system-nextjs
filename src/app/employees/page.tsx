@@ -1,0 +1,387 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import ProtectedRoute from '@/components/ProtectedRoute'
+import Layout from '@/components/Layout'
+
+interface Employee {
+  _id: string
+  username: string
+  email: string
+  name: string
+  position: string
+  phone: string
+  role: 'admin' | 'employee'
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export default function EmployeesPage() {
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    name: '',
+    position: '',
+    phone: '',
+    role: 'employee' as 'admin' | 'employee'
+  })
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/users', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setEmployees(data.users)
+      }
+    } catch (error) {
+      console.error('Failed to fetch employees:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      const url = editingEmployee ? `/api/users/${editingEmployee._id}` : '/api/users'
+      const method = editingEmployee ? 'PUT' : 'POST'
+      
+      const submitData: any = {
+        username: formData.username,
+        email: formData.email,
+        name: formData.name,
+        position: formData.position,
+        phone: formData.phone,
+        role: formData.role
+      }
+
+      // Only include password if it's provided (for new users or password changes)
+      if (formData.password) {
+        submitData.password = formData.password
+      }
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submitData),
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        await fetchEmployees()
+        setShowModal(false)
+        resetForm()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch (error) {
+      console.error('Submit error:', error)
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    }
+  }
+
+  const handleEdit = (employee: Employee) => {
+    setEditingEmployee(employee)
+    setFormData({
+      username: employee.username,
+      email: employee.email,
+      password: '', // Don't pre-fill password
+      name: employee.name,
+      position: employee.position,
+      phone: employee.phone,
+      role: employee.role
+    })
+    setShowModal(true)
+  }
+
+  const handleDelete = async (employeeId: string) => {
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบพนักงานคนนี้?')) return
+
+    try {
+      const response = await fetch(`/api/users/${employeeId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        await fetchEmployees()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'เกิดข้อผิดพลาดในการลบพนักงาน')
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('เกิดข้อผิดพลาดในการลบพนักงาน')
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      email: '',
+      password: '',
+      name: '',
+      position: '',
+      phone: '',
+      role: 'employee'
+    })
+    setEditingEmployee(null)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  if (loading) {
+    return (
+      <ProtectedRoute requiredRole="admin">
+        <Layout>
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    )
+  }
+
+  return (
+    <ProtectedRoute requiredRole="admin">
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">จัดการพนักงาน</h1>
+              <p className="text-gray-600">เพิ่ม แก้ไข และจัดการข้อมูลพนักงาน</p>
+            </div>
+            <button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              เพิ่มพนักงานใหม่
+            </button>
+          </div>
+
+          {/* Employees Table */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ข้อมูลพนักงาน
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ตำแหน่ง
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      สิทธิ์
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      วันที่สร้าง
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      การจัดการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {employees.map((employee) => (
+                    <tr key={employee._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                          <div className="text-sm text-gray-500">{employee.email}</div>
+                          <div className="text-sm text-gray-500">@{employee.username}</div>
+                          <div className="text-sm text-gray-500">{employee.phone}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {employee.position}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          employee.role === 'admin' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {employee.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(employee.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => handleEdit(employee)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          onClick={() => handleDelete(employee._id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          ลบ
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-10 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div className="mt-3">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    {editingEmployee ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่'}
+                  </h3>
+                  
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ชื่อผู้ใช้ *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!!editingEmployee} // Disable username editing
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        อีเมล *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        รหัสผ่าน {editingEmployee ? '(เว้นว่างหากไม่ต้องการเปลี่ยน)' : '*'}
+                      </label>
+                      <input
+                        type="password"
+                        required={!editingEmployee}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ชื่อ-นามสกุล *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ตำแหน่ง *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.position}
+                        onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        เบอร์โทรศัพท์ *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        สิทธิ์การใช้งาน *
+                      </label>
+                      <select
+                        required
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'employee' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="employee">พนักงาน</option>
+                        <option value="admin">ผู้จัดการ</option>
+                      </select>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                      >
+                        {editingEmployee ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Layout>
+    </ProtectedRoute>
+  )
+}
+

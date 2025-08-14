@@ -1,0 +1,118 @@
+import mongoose from 'mongoose'
+
+export interface ISaleItem {
+  productId: mongoose.Types.ObjectId
+  productName: string
+  quantity: number
+  pricePerUnit: number
+  totalPrice: number
+}
+
+export interface ISale extends mongoose.Document {
+  _id: string
+  employeeId: mongoose.Types.ObjectId
+  employeeName: string
+  saleDate: Date
+  type: 'เบิก' | 'คืน'
+  items: ISaleItem[]
+  totalAmount: number
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+const SaleItemSchema = new mongoose.Schema({
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true
+  },
+  productName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  quantity: {
+    type: Number,
+    required: [true, 'Quantity is required'],
+    min: [1, 'Quantity must be at least 1'],
+    validate: {
+      validator: function(value: number) {
+        return Number.isInteger(value) && value > 0
+      },
+      message: 'Quantity must be a positive integer'
+    }
+  },
+  pricePerUnit: {
+    type: Number,
+    required: [true, 'Price per unit is required'],
+    min: [0, 'Price per unit cannot be negative']
+  },
+  totalPrice: {
+    type: Number,
+    required: [true, 'Total price is required'],
+    min: [0, 'Total price cannot be negative']
+  }
+}, { _id: false })
+
+const SaleSchema = new mongoose.Schema({
+  employeeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Employee ID is required']
+  },
+  employeeName: {
+    type: String,
+    required: [true, 'Employee name is required'],
+    trim: true
+  },
+  saleDate: {
+    type: Date,
+    required: [true, 'Sale date is required'],
+    default: Date.now
+  },
+  type: {
+    type: String,
+    enum: ['เบิก', 'คืน'],
+    required: [true, 'Sale type is required']
+  },
+  items: {
+    type: [SaleItemSchema],
+    required: [true, 'Sale items are required'],
+    validate: {
+      validator: function(items: ISaleItem[]) {
+        return items && items.length > 0
+      },
+      message: 'At least one sale item is required'
+    }
+  },
+  totalAmount: {
+    type: Number,
+    required: [true, 'Total amount is required'],
+    min: [0, 'Total amount cannot be negative']
+  },
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Notes cannot exceed 500 characters']
+  }
+}, {
+  timestamps: true
+})
+
+// Index for better query performance
+SaleSchema.index({ employeeId: 1 })
+SaleSchema.index({ saleDate: -1 })
+SaleSchema.index({ type: 1 })
+SaleSchema.index({ employeeId: 1, saleDate: -1 })
+
+// Pre-save middleware to calculate total amount
+SaleSchema.pre('save', function(next) {
+  if (this.items && this.items.length > 0) {
+    this.totalAmount = this.items.reduce((total, item) => total + item.totalPrice, 0)
+  }
+  next()
+})
+
+export default mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)
+

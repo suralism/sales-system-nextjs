@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server'
+import connectDB from '../../../../../lib/database'
+import User from '../../../../../lib/models/User'
+import { getUserFromRequest } from '../../../../../lib/auth'
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = getUserFromRequest(request)
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    await connectDB()
+    
+    // Get fresh user data from database
+    const userData = await User.findById(user.userId)
+      .select('-password')
+      .lean()
+    
+    if (!userData || !userData.isActive) {
+      return NextResponse.json(
+        { error: 'User not found or inactive' },
+        { status: 404 }
+      )
+    }
+    
+    return NextResponse.json({
+      user: {
+        id: userData._id,
+        username: userData.username,
+        email: userData.email,
+        name: userData.name,
+        position: userData.position,
+        phone: userData.phone,
+        role: userData.role
+      }
+    })
+    
+  } catch (error) {
+    console.error('Get user info error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
