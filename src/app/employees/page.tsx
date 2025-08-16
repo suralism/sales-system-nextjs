@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import toast from 'react-hot-toast';
 
 interface Employee {
   _id: string
@@ -12,10 +13,13 @@ interface Employee {
   position: string
   phone: string
   role: 'admin' | 'employee'
+  priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ';
   isActive: boolean
   createdAt: string
   updatedAt: string
 }
+
+const priceLevels = ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ'];
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -29,7 +33,8 @@ export default function EmployeesPage() {
     name: '',
     position: '',
     phone: '',
-    role: 'employee' as 'admin' | 'employee'
+    role: 'employee' as 'admin' | 'employee',
+    priceLevel: 'ราคาปกติ' as Employee['priceLevel']
   })
 
   useEffect(() => {
@@ -45,9 +50,12 @@ export default function EmployeesPage() {
       if (response.ok) {
         const data = await response.json()
         setEmployees(data.users)
+      } else {
+        toast.error('Failed to fetch employees.');
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error)
+      toast.error('Failed to fetch employees.');
     } finally {
       setLoading(false)
     }
@@ -66,10 +74,10 @@ export default function EmployeesPage() {
         name: formData.name,
         position: formData.position,
         phone: formData.phone,
-        role: formData.role
+        role: formData.role,
+        priceLevel: formData.priceLevel
       }
 
-      // Only include password if it's provided (for new users or password changes)
       if (formData.password) {
         submitData.password = formData.password
       }
@@ -84,16 +92,17 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
+        toast.success(`Employee ${editingEmployee ? 'updated' : 'created'} successfully!`)
         await fetchEmployees()
         setShowModal(false)
         resetForm()
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        toast.error(error.error || 'An error occurred.')
       }
     } catch (error) {
       console.error('Submit error:', error)
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+      toast.error('An error occurred while saving employee data.')
     }
   }
 
@@ -102,17 +111,18 @@ export default function EmployeesPage() {
     setFormData({
       username: employee.username,
       email: employee.email,
-      password: '', // Don't pre-fill password
+      password: '', 
       name: employee.name,
       position: employee.position,
       phone: employee.phone,
-      role: employee.role
+      role: employee.role,
+      priceLevel: employee.priceLevel || 'ราคาปกติ'
     })
     setShowModal(true)
   }
 
   const handleDelete = async (employeeId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบพนักงานคนนี้?')) return
+    if (!confirm('Are you sure you want to delete this employee?')) return
 
     try {
       const response = await fetch(`/api/users/${employeeId}`, {
@@ -121,14 +131,15 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
+        toast.success('Employee deleted successfully');
         await fetchEmployees()
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาดในการลบพนักงาน')
+        toast.error(error.error || 'Failed to delete employee.')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      alert('เกิดข้อผิดพลาดในการลบพนักงาน')
+      toast.error('An error occurred while deleting employee.')
     }
   }
 
@@ -140,7 +151,8 @@ export default function EmployeesPage() {
       name: '',
       position: '',
       phone: '',
-      role: 'employee'
+      role: 'employee',
+      priceLevel: 'ราคาปกติ'
     })
     setEditingEmployee(null)
   }
@@ -198,10 +210,10 @@ export default function EmployeesPage() {
                       ตำแหน่ง
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สิทธิ์
+                      ระดับราคา
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      วันที่สร้าง
+                      สิทธิ์
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       การจัดการ
@@ -214,13 +226,14 @@ export default function EmployeesPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                          <div className="text-sm text-gray-500">{employee.email}</div>
                           <div className="text-sm text-gray-500">@{employee.username}</div>
-                          <div className="text-sm text-gray-500">{employee.phone}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {employee.position}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {employee.priceLevel}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -230,9 +243,6 @@ export default function EmployeesPage() {
                         }`}>
                           {employee.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(employee.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <button
@@ -258,105 +268,100 @@ export default function EmployeesPage() {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
                 <div className="mt-3">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     {editingEmployee ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่'}
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ชื่อผู้ใช้ *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={!!editingEmployee} // Disable username editing
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        อีเมล *
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        รหัสผ่าน {editingEmployee ? '(เว้นว่างหากไม่ต้องการเปลี่ยน)' : '*'}
-                      </label>
-                      <input
-                        type="password"
-                        required={!editingEmployee}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ชื่อ-นามสกุล *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ตำแหน่ง *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.position}
-                        onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        เบอร์โทรศัพท์ *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        สิทธิ์การใช้งาน *
-                      </label>
-                      <select
-                        required
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'employee' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="employee">พนักงาน</option>
-                        <option value="admin">ผู้จัดการ</option>
-                      </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ใช้ *</label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.username}
+                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            disabled={!!editingEmployee}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล *</label>
+                          <input
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล *</label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ตำแหน่ง *</label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.position}
+                            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์ *</label>
+                          <input
+                            type="tel"
+                            required
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน {editingEmployee ? '(เว้นว่างหากไม่ต้องการเปลี่ยน)' : '*'}</label>
+                          <input
+                            type="password"
+                            required={!editingEmployee}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">สิทธิ์การใช้งาน *</label>
+                          <select
+                            required
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'employee' })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="employee">พนักงาน</option>
+                            <option value="admin">ผู้จัดการ</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ระดับราคา *</label>
+                          <select
+                            required
+                            value={formData.priceLevel}
+                            onChange={(e) => setFormData({ ...formData, priceLevel: e.target.value as Employee['priceLevel'] })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {priceLevels.map(level => (
+                                <option key={level} value={level}>{level}</option>
+                            ))}
+                          </select>
+                        </div>
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-4">

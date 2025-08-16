@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
     
     const { employeeId, type, items, notes } = await request.json()
     
-    // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: 'Sale items are required' },
@@ -100,24 +99,14 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Determine the employee for this sale
-    let targetEmployeeId = employeeId
-    
-    if (currentUser.role === 'employee') {
-      // Employee can only create sales for themselves
-      targetEmployeeId = currentUser.userId
-    } else if (currentUser.role === 'admin') {
-      // Admin can create sales for any employee
-      if (!employeeId) {
-        return NextResponse.json(
-          { error: 'Employee ID is required' },
-          { status: 400 }
-        )
-      }
-      targetEmployeeId = employeeId
+    if (!employeeId) {
+      return NextResponse.json(
+        { error: 'Employee ID is required' },
+        { status: 400 }
+      )
     }
+    const targetEmployeeId = employeeId
     
-    // Verify employee exists
     const employee = await User.findById(targetEmployeeId)
     if (!employee || !employee.isActive) {
       return NextResponse.json(
@@ -126,55 +115,61 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Start a session for transaction
     const session = await mongoose.startSession()
     session.startTransaction()
     
     try {
-      // Validate and process items
       const processedItems = []
       let totalAmount = 0
       
       for (const item of items) {
-        const { productId, quantity } = item
+        const { productId, withdrawal, return: returnQty, defective } = item
         
-        if (!productId || !quantity || quantity <= 0) {
-          throw new Error('Invalid item data')
+        if (!productId) {
+          throw new Error('Invalid item data: productId is missing')
         }
         
-        // Get product details
         const product = await Product.findById(productId).session(session)
         if (!product || !product.isActive) {
           throw new Error(`Product not found: ${productId}`)
         }
         
-        // Check stock availability for 'เบิก' type
-        if (type === 'เบิก' && product.stock < quantity) {
-          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${quantity}`)
+        const priceInfo = product.prices.find(p => p.level === employee.priceLevel);
+        if (!priceInfo) {
+          throw new Error(`Price for level ${employee.priceLevel} not found for product ${product.name}`)
+        }
+        const price = priceInfo.value;
+
+        const netStockChange = (returnQty || 0) - (withdrawal || 0)
+
+        if (product.stock + netStockChange < 0) {
+          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${withdrawal}`)
         }
         
-        const totalPrice = product.price * quantity
+        const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0);
+        const itemTotalPrice = price * netQuantity;
         
         processedItems.push({
           productId: product._id,
           productName: product.name,
-          quantity,
-          pricePerUnit: product.price,
-          totalPrice
+          pricePerUnit: price,
+          withdrawal: withdrawal || 0,
+          return: returnQty || 0,
+          defective: defective || 0,
+          totalPrice: itemTotalPrice
         })
         
-        totalAmount += totalPrice
+        totalAmount += itemTotalPrice
         
-        // Update product stock
-        const stockChange = type === 'เบิก' ? -quantity : quantity
-        await Product.findByIdAndUpdate(
-          productId,
-          { $inc: { stock: stockChange } },
-          { session }
-        )
+        if (netStockChange !== 0) {
+            await Product.findByIdAndUpdate(
+              productId,
+              { $inc: { stock: netStockChange } },
+              { session }
+            )
+        }
       }
       
-      // Create sale record
       const newSale = new Sale({
         employeeId: targetEmployeeId,
         employeeName: employee.name,
@@ -186,7 +181,6 @@ export async function POST(request: NextRequest) {
       
       await newSale.save({ session })
       
-      // Commit transaction
       await session.commitTransaction()
       
       return NextResponse.json({
@@ -195,7 +189,6 @@ export async function POST(request: NextRequest) {
       }, { status: 201 })
       
     } catch (error) {
-      // Rollback transaction
       await session.abortTransaction()
       throw error
     } finally {

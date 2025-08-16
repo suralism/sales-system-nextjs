@@ -95,13 +95,14 @@ export async function PUT(
     
     if (currentUser.role === 'admin') {
       // Admin can update all fields
-      const { name, position, phone, email, role, password } = updateData
+      const { name, position, phone, email, role, password, priceLevel } = updateData
       
       if (name) allowedUpdates.name = name
       if (position) allowedUpdates.position = position
       if (phone) allowedUpdates.phone = phone
       if (email) allowedUpdates.email = email.toLowerCase()
       if (role) allowedUpdates.role = role
+      if (priceLevel) allowedUpdates.priceLevel = priceLevel
       if (password) allowedUpdates.password = await hashPassword(password)
     } else {
       // Employee can only update their own personal info

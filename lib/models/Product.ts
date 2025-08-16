@@ -1,9 +1,14 @@
 import mongoose from 'mongoose'
 
+export interface IPrice extends mongoose.Document {
+  level: string;
+  value: number;
+}
+
 export interface IProduct extends mongoose.Document {
   _id: string
   name: string
-  price: number
+  prices: IPrice[];
   stock: number
   description?: string
   category?: string
@@ -12,6 +17,19 @@ export interface IProduct extends mongoose.Document {
   updatedAt: Date
 }
 
+const PriceSchema = new mongoose.Schema({
+  level: {
+    type: String,
+    required: true,
+    enum: ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ']
+  },
+  value: {
+    type: Number,
+    required: true,
+    min: [0, 'Price value cannot be negative']
+  }
+});
+
 const ProductSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -19,15 +37,14 @@ const ProductSchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Product name cannot exceed 200 characters']
   },
-  price: {
-    type: Number,
-    required: [true, 'Price is required'],
-    min: [0, 'Price cannot be negative'],
+  prices: {
+    type: [PriceSchema],
+    required: true,
     validate: {
-      validator: function(value: number) {
-        return Number.isFinite(value) && value >= 0
+      validator: function(v: IPrice[]) {
+        return Array.isArray(v) && v.length > 0;
       },
-      message: 'Price must be a valid positive number'
+      message: 'At least one price level is required.'
     }
   },
   stock: {

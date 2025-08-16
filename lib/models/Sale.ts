@@ -3,8 +3,10 @@ import mongoose from 'mongoose'
 export interface ISaleItem {
   productId: mongoose.Types.ObjectId
   productName: string
-  quantity: number
   pricePerUnit: number
+  withdrawal: number
+  return: number
+  defective: number
   totalPrice: number
 }
 
@@ -32,21 +34,28 @@ const SaleItemSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  quantity: {
-    type: Number,
-    required: [true, 'Quantity is required'],
-    min: [1, 'Quantity must be at least 1'],
-    validate: {
-      validator: function(value: number) {
-        return Number.isInteger(value) && value > 0
-      },
-      message: 'Quantity must be a positive integer'
-    }
-  },
   pricePerUnit: {
     type: Number,
     required: [true, 'Price per unit is required'],
     min: [0, 'Price per unit cannot be negative']
+  },
+  withdrawal: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  return: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  defective: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
   },
   totalPrice: {
     type: Number,
@@ -108,8 +117,11 @@ SaleSchema.index({ employeeId: 1, saleDate: -1 })
 
 // Pre-save middleware to calculate total amount
 SaleSchema.pre('save', function(next) {
-  if (this.items && this.items.length > 0) {
-    this.totalAmount = this.items.reduce((total, item) => total + item.totalPrice, 0)
+  if (this.isModified('items')) {
+    this.totalAmount = this.items.reduce((total, item) => {
+      const netQuantity = item.withdrawal - item.return - item.defective;
+      return total + (netQuantity * item.pricePerUnit);
+    }, 0)
   }
   next()
 })

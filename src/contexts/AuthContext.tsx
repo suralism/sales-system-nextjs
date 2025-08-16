@@ -10,6 +10,7 @@ interface User {
   position: string
   phone: string
   role: 'admin' | 'employee'
+  priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ'
 }
 
 interface AuthContextType {

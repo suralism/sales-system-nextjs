@@ -60,9 +60,8 @@ export async function PUT(
     await connectDB()
     
     const { id } = params
-    const { name, price, stock, description, category } = await request.json()
+    const { name, prices, stock, description, category } = await request.json()
     
-    // Find the product to update
     const product = await Product.findById(id)
     
     if (!product || !product.isActive) {
@@ -72,11 +71,9 @@ export async function PUT(
       )
     }
     
-    // Prepare update object
     const updateData: any = {}
     
     if (name !== undefined) {
-      // Check if new name already exists (excluding current product)
       const existingProduct = await Product.findOne({
         name: { $regex: new RegExp(`^${name}$`, 'i') },
         isActive: true,
@@ -93,14 +90,8 @@ export async function PUT(
       updateData.name = name.trim()
     }
     
-    if (price !== undefined) {
-      if (price < 0) {
-        return NextResponse.json(
-          { error: 'Price must be non-negative' },
-          { status: 400 }
-        )
-      }
-      updateData.price = Number(price)
+    if (prices !== undefined) {
+      updateData.prices = prices
     }
     
     if (stock !== undefined) {
@@ -123,7 +114,6 @@ export async function PUT(
     
     updateData.updatedAt = new Date()
     
-    // Update product
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       updateData,
@@ -171,7 +161,6 @@ export async function DELETE(
     
     const { id } = params
     
-    // Soft delete - set isActive to false
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       { isActive: false, updatedAt: new Date() },
@@ -197,4 +186,3 @@ export async function DELETE(
     )
   }
 }
-

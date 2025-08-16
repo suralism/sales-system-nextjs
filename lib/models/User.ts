@@ -9,6 +9,7 @@ export interface IUser extends mongoose.Document {
   position: string
   phone: string
   role: 'admin' | 'employee'
+  priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ'
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -29,7 +30,7 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     trim: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
@@ -60,6 +61,12 @@ const UserSchema = new mongoose.Schema({
     default: 'employee',
     required: true
   },
+  priceLevel: {
+    type: String,
+    enum: ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ'],
+    default: 'ราคาปกติ',
+    required: true
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -74,4 +81,5 @@ UserSchema.index({ email: 1 })
 UserSchema.index({ role: 1 })
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+
 

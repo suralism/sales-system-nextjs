@@ -3,11 +3,18 @@
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import toast from 'react-hot-toast';
+
+interface Price {
+  level: string;
+  value: number;
+}
 
 interface Product {
   _id: string
   name: string
-  price: number
+  prices: Price[];
+  price?: number; // Keep optional for old data
   stock: number
   description?: string
   category?: string
@@ -16,6 +23,8 @@ interface Product {
   updatedAt: string
 }
 
+const priceLevels = ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ'];
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +32,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
+    prices: priceLevels.map(level => ({ level, value: '' as string | number})),
     stock: '',
     description: '',
     category: ''
@@ -34,6 +43,7 @@ export default function ProductsPage() {
   }, [])
 
   const fetchProducts = async () => {
+    setLoading(true);
     try {
       const response = await fetch('/api/products', {
         credentials: 'include'
@@ -42,9 +52,12 @@ export default function ProductsPage() {
       if (response.ok) {
         const data = await response.json()
         setProducts(data.products)
+      } else {
+        toast.error('Failed to fetch products.');
       }
     } catch (error) {
       console.error('Failed to fetch products:', error)
+      toast.error('Failed to fetch products.');
     } finally {
       setLoading(false)
     }
@@ -57,6 +70,13 @@ export default function ProductsPage() {
       const url = editingProduct ? `/api/products/${editingProduct._id}` : '/api/products'
       const method = editingProduct ? 'PUT' : 'POST'
       
+      const processedPrices = formData.prices.map(p => {
+          if (p.value === '' || isNaN(parseFloat(p.value as string))) {
+              throw new Error(`Price for level ${p.level} is invalid.`);
+          }
+          return {...p, value: parseFloat(p.value as string) };
+      });
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -64,7 +84,7 @@ export default function ProductsPage() {
         },
         body: JSON.stringify({
           name: formData.name,
-          price: parseFloat(formData.price),
+          prices: processedPrices,
           stock: parseInt(formData.stock),
           description: formData.description,
           category: formData.category
@@ -73,24 +93,38 @@ export default function ProductsPage() {
       })
 
       if (response.ok) {
+        toast.success(`Product ${editingProduct ? 'updated' : 'created'} successfully!`)
         await fetchProducts()
         setShowModal(false)
         resetForm()
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        toast.error(error.error || 'An error occurred.')
       }
     } catch (error) {
       console.error('Submit error:', error)
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+      toast.error((error as Error).message || 'An error occurred while saving the product.')
     }
   }
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
+    const newPrices = priceLevels.map(level => {
+        // If new price structure exists, use it
+        if (product.prices && product.prices.length > 0) {
+            const price = product.prices.find(p => p.level === level);
+            return { level, value: price ? price.value.toString() : '' };
+        }
+        // Otherwise, it's old data. Use old price for 'ราคาปกติ'
+        if (level === 'ราคาปกติ' && product.price) {
+            return { level, value: product.price.toString() };
+        }
+        return { level, value: '' };
+    });
+
     setFormData({
       name: product.name,
-      price: product.price.toString(),
+      prices: newPrices,
       stock: product.stock.toString(),
       description: product.description || '',
       category: product.category || ''
@@ -99,7 +133,7 @@ export default function ProductsPage() {
   }
 
   const handleDelete = async (productId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?')) return
+    if (!confirm('Are you sure you want to delete this product?')) return
 
     try {
       const response = await fetch(`/api/products/${productId}`, {
@@ -108,21 +142,22 @@ export default function ProductsPage() {
       })
 
       if (response.ok) {
+        toast.success('Product deleted successfully');
         await fetchProducts()
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาดในการลบสินค้า')
+        toast.error(error.error || 'Failed to delete product.')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      alert('เกิดข้อผิดพลาดในการลบสินค้า')
+      toast.error('An error occurred while deleting the product.')
     }
   }
 
   const resetForm = () => {
     setFormData({
       name: '',
-      price: '',
+      prices: priceLevels.map(level => ({ level, value: '' as string | number})),
       stock: '',
       description: '',
       category: ''
@@ -130,11 +165,25 @@ export default function ProductsPage() {
     setEditingProduct(null)
   }
 
+  const handlePriceChange = (index: number, value: string) => {
+      const newPrices = [...formData.prices];
+      newPrices[index].value = value;
+      setFormData({...formData, prices: newPrices});
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
       currency: 'THB'
     }).format(amount)
+  }
+
+  const getNormalPrice = (product: Product) => {
+      if (product.prices && product.prices.length > 0) {
+          const price = product.prices.find(p => p.level === 'ราคาปกติ');
+          return price ? price.value : 0;
+      }
+      return product.price || 0; // Fallback to old price field
   }
 
   if (loading) {
@@ -179,13 +228,13 @@ export default function ProductsPage() {
                       สินค้า
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ราคา
+                      ราคาปกติ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       สต็อก
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      หมวดหมู่
+                      สถานะ
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       การจัดการ
@@ -193,47 +242,54 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => (
-                    <tr key={product._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          {product.description && (
-                            <div className="text-sm text-gray-500">{product.description}</div>
+                  {products.map((product) => {
+                    const needsUpdate = !product.prices || product.prices.length === 0;
+                    return (
+                      <tr key={product._id} className={`hover:bg-gray-50 ${needsUpdate ? 'bg-yellow-50' : ''}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                            {product.description && (
+                              <div className="text-sm text-gray-500">{product.description}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatCurrency(getNormalPrice(product))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            product.stock <= 10 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {product.stock} ชิ้น
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {needsUpdate && (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
+                                  รออัปเดต
+                              </span>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(product.price)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          product.stock <= 10 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {product.stock} ชิ้น
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {product.category || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          แก้ไข
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product._id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          ลบ
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            ลบ
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -242,7 +298,7 @@ export default function ProductsPage() {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
                 <div className="mt-3">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     {editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}
@@ -262,20 +318,22 @@ export default function ProductsPage() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ราคา (บาท) *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        required
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                    {formData.prices.map((price, index) => (
+                        <div key={index}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {price.level} (บาท) *
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                required
+                                value={price.value}
+                                onChange={(e) => handlePriceChange(index, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    ))}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

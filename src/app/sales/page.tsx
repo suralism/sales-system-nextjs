@@ -1,28 +1,36 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import { useAuth } from '@/contexts/AuthContext'
+import toast from 'react-hot-toast';
+
+interface Price {
+  level: string;
+  value: number;
+}
 
 interface Product {
   _id: string
   name: string
-  price: number
+  prices: Price[];
   stock: number
 }
 
 interface Employee {
   _id: string
   name: string
+  priceLevel: string;
 }
 
 interface SaleItem {
   productId: string
   productName: string
-  quantity: number
   pricePerUnit: number
-  totalPrice: number
+  withdrawal: number
+  return: number
+  defective: number
 }
 
 interface Sale {
@@ -43,24 +51,38 @@ export default function SalesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  
+  const [searchTerm, setSearchTerm] = useState('')
+
   const [formData, setFormData] = useState({
     employeeId: '',
     type: 'เบิก' as 'เบิก' | 'คืน',
-    items: [{ productId: '', quantity: 1 }],
+    items: [] as SaleItem[],
     notes: ''
   })
 
+  const selectedEmployee = useMemo(() => {
+    return employees.find(e => e._id === formData.employeeId);
+  }, [formData.employeeId, employees]);
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return []
+    return products.filter(p => 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [searchTerm, products])
+
   useEffect(() => {
-    fetchData()
-  }, [])
+    if(user) {
+        fetchData()
+    }
+  }, [user])
 
   const fetchData = async () => {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
         fetch('/api/sales', { credentials: 'include' }),
         fetch('/api/products', { credentials: 'include' }),
-        user?.role === 'admin' ? fetch('/api/users', { credentials: 'include' }) : Promise.resolve(null)
+        fetch('/api/users', { credentials: 'include' })
       ])
 
       if (salesRes.ok) {
@@ -75,10 +97,11 @@ export default function SalesPage() {
 
       if (employeesRes && employeesRes.ok) {
         const employeesData = await employeesRes.json()
-        setEmployees(employeesData.users.filter((u: any) => u.role === 'employee'))
+        setEmployees(employeesData.users)
       }
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false)
     }
@@ -88,19 +111,15 @@ export default function SalesPage() {
     e.preventDefault()
     
     try {
-      // Calculate items with prices
-      const processedItems = formData.items.map(item => {
-        const product = products.find(p => p._id === item.productId)
-        if (!product) throw new Error('Product not found')
-        
-        return {
-          productId: item.productId,
-          quantity: item.quantity
-        }
-      })
+      const processedItems = formData.items.map(item => ({
+        productId: item.productId,
+        withdrawal: item.withdrawal,
+        return: item.return,
+        defective: item.defective,
+      }))
 
       const submitData = {
-        employeeId: user?.role === 'employee' ? user.id : formData.employeeId,
+        employeeId: formData.employeeId,
         type: formData.type,
         items: processedItems,
         notes: formData.notes
@@ -119,14 +138,14 @@ export default function SalesPage() {
         await fetchData()
         setShowModal(false)
         resetForm()
-        alert('บันทึกการขายสำเร็จ')
+        toast.success('บันทึกการขายสำเร็จ')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        toast.error(error.error || 'เกิดข้อผิดพลาด')
       }
     } catch (error) {
       console.error('Submit error:', error)
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+      toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     }
   }
 
@@ -134,43 +153,104 @@ export default function SalesPage() {
     setFormData({
       employeeId: '',
       type: 'เบิก',
-      items: [{ productId: '', quantity: 1 }],
+      items: [],
       notes: ''
     })
+    setSearchTerm('')
   }
 
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { productId: '', quantity: 1 }]
-    })
+  const addProductToForm = (product: Product) => {
+    if (!selectedEmployee) {
+        toast.error("Please select an employee first.");
+        return;
+    }
+
+    if (formData.items.some(item => item.productId === product._id)) {
+      toast.error('This product is already in the list.')
+      return
+    }
+
+    if (!product.prices || product.prices.length === 0) {
+        toast.error('This product needs its price levels updated before it can be sold.');
+        return;
+    }
+
+    const priceInfo = product.prices.find(p => p.level === selectedEmployee.priceLevel);
+    if (!priceInfo) {
+        toast.error(`Price for level ${selectedEmployee.priceLevel} not found for this product.`);
+        return;
+    }
+
+    const newItem: SaleItem = {
+      productId: product._id,
+      productName: product.name,
+      pricePerUnit: priceInfo.value,
+      withdrawal: 1,
+      return: 0,
+      defective: 0
+    }
+    setFormData({ ...formData, items: [...formData.items, newItem] })
+    setSearchTerm('')
   }
 
   const removeItem = (index: number) => {
-    if (formData.items.length > 1) {
-      const newItems = formData.items.filter((_, i) => i !== index)
-      setFormData({ ...formData, items: newItems })
-    }
-  }
-
-  const updateItem = (index: number, field: string, value: any) => {
-    const newItems = [...formData.items]
-    newItems[index] = { ...newItems[index], [field]: value }
+    const newItems = formData.items.filter((_, i) => i !== index)
     setFormData({ ...formData, items: newItems })
   }
 
-  const calculateTotal = () => {
-    return formData.items.reduce((total, item) => {
-      const product = products.find(p => p._id === item.productId)
-      return total + (product ? product.price * item.quantity : 0)
-    }, 0)
+  const updateItem = (index: number, field: keyof SaleItem, value: any) => {
+    const newItems = [...formData.items]
+    const item = newItems[index]
+    if (field === 'withdrawal' || field === 'return' || field === 'defective') {
+        (item[field] as number) = parseInt(value, 10) || 0;
+    } 
+    setFormData({ ...formData, items: newItems })
   }
+
+  const { totalAmount, totalItems } = useMemo(() => {
+    let amount = 0
+    let items = 0
+    formData.items.forEach(item => {
+      const netQuantity = item.withdrawal - item.return - item.defective;
+      amount += netQuantity * item.pricePerUnit
+      items += netQuantity
+    })
+    return { totalAmount: amount, totalItems: items }
+  }, [formData.items])
+
+  const handleDelete = async (saleId: string) => {
+    if (window.confirm('Are you sure you want to delete this sale?')) {
+      try {
+        const response = await fetch(`/api/sales/${saleId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          toast.success('Sale deleted successfully');
+          fetchData();
+        } else {
+          const error = await response.json();
+          toast.error(error.error || 'Failed to delete sale');
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        toast.error('Failed to delete sale');
+      }
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
       currency: 'THB'
     }).format(amount)
+  }
+
+  const getPriceForEmployee = (product: Product, employee: Employee | undefined) => {
+      if (!employee || !product.prices) return 0;
+      const priceInfo = product.prices.find(p => p.level === employee.priceLevel);
+      return priceInfo ? priceInfo.value : 0;
   }
 
   const formatDate = (dateString: string) => {
@@ -263,13 +343,23 @@ export default function SalesPage() {
                         <div className="space-y-1">
                           {sale.items.map((item, index) => (
                             <div key={index}>
-                              {item.productName} × {item.quantity}
+                              {item.productName} × {item.withdrawal}
                             </div>
                           ))}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(sale.totalAmount)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {user?.role === 'admin' && (
+                          <button
+                            onClick={() => handleDelete(sale._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -281,97 +371,109 @@ export default function SalesPage() {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
                 <div className="mt-3">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     บันทึกการขายใหม่
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    {user?.role === 'admin' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          พนักงาน *
-                        </label>
-                        <select
-                          required
-                          value={formData.employeeId}
-                          onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">เลือกพนักงาน</option>
-                          {employees.map((employee) => (
-                            <option key={employee._id} value={employee._id}>
-                              {employee.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ประเภท *
+                        พนักงาน *
                       </label>
                       <select
                         required
-                        value={formData.type}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value as 'เบิก' | 'คืน' })}
+                        value={formData.employeeId}
+                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="เบิก">เบิก</option>
-                        <option value="คืน">คืน</option>
+                        <option value="">เลือกพนักงาน</option>
+                        {employees.map((employee) => (
+                          <option key={employee._id} value={employee._id}>
+                            {employee.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        รายการสินค้า *
+                        ค้นหาสินค้า
                       </label>
-                      <div className="space-y-2">
-                        {formData.items.map((item, index) => (
-                          <div key={index} className="flex space-x-2">
-                            <select
-                              required
-                              value={item.productId}
-                              onChange={(e) => updateItem(index, 'productId', e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      <input 
+                        type="text"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา..."
+                      />
+                      {filteredProducts.length > 0 && (
+                        <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
+                          {filteredProducts.map(p => (
+                            <div 
+                              key={p._id}
+                              onClick={() => addProductToForm(p)}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                             >
-                              <option value="">เลือกสินค้า</option>
-                              {products.map((product) => (
-                                <option key={product._id} value={product._id}>
-                                  {product.name} (คงเหลือ: {product.stock}) - {formatCurrency(product.price)}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="number"
-                              min="1"
-                              required
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
-                              className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="จำนวน"
-                            />
-                            {formData.items.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeItem(index)}
-                                className="px-3 py-2 text-red-600 hover:text-red-800"
-                              >
-                                ลบ
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={addItem}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          + เพิ่มรายการ
-                        </button>
-                      </div>
+                              {p.name} ({formatCurrency(getPriceForEmployee(p, selectedEmployee))})
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">สินค้า</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ราคา</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">เบิก</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">คืน</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ของเสีย</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {formData.items.map((item, index) => (
+                            <tr key={item.productId}>
+                              <td className="px-4 py-2 whitespace-nowrap">{item.productName}</td>
+                              <td className="px-4 py-2 whitespace-nowrap">{formatCurrency(item.pricePerUnit)}</td>
+                              <td className="px-4 py-2">
+                                <input 
+                                  type="number"
+                                  min="0"
+                                  value={item.withdrawal}
+                                  onChange={e => updateItem(index, 'withdrawal', e.target.value)}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input 
+                                  type="number"
+                                  min="0"
+                                  value={item.return}
+                                  onChange={e => updateItem(index, 'return', e.target.value)}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input 
+                                  type="number"
+                                  min="0"
+                                  value={item.defective}
+                                  onChange={e => updateItem(index, 'defective', e.target.value)}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700">ลบ</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
                     <div>
@@ -386,9 +488,12 @@ export default function SalesPage() {
                       />
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-md">
+                    <div className="bg-gray-50 p-4 rounded-md flex justify-between items-center">
                       <div className="text-lg font-medium text-gray-900">
-                        ยอดรวม: {formatCurrency(calculateTotal())}
+                        ยอดรวม: {formatCurrency(totalAmount)}
+                      </div>
+                      <div className="text-lg font-medium text-gray-900">
+                        จำนวนชิ้นทั้งหมด: {totalItems}
                       </div>
                     </div>
 
@@ -417,4 +522,3 @@ export default function SalesPage() {
     </ProtectedRoute>
   )
 }
-
