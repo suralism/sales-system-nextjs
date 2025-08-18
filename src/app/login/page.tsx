@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import toast from 'react-hot-toast'
+import Button from '@/components/Button'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   
   const { login } = useAuth()
@@ -15,18 +16,18 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
 
     try {
       await login(username, password)
+      toast.success('เข้าสู่ระบบสำเร็จ')
       router.push('/dashboard')
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
-      } else {
-        setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
-      }
+      const message =
+        err instanceof Error
+          ? err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ'
+          : 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ'
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -80,19 +81,13 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3"
             >
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">

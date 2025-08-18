@@ -30,7 +30,30 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <Toaster position="top-center" reverseOrder={false} />
+          <Toaster
+            position="top-center"
+            reverseOrder={false}
+            toastOptions={{
+              className:
+                'shadow-lg rounded-lg px-4 py-3 bg-white text-gray-800 animate-toast-slide',
+              success: {
+                className:
+                  'bg-green-50 text-green-800 border border-green-200',
+                iconTheme: {
+                  primary: '#10B981',
+                  secondary: '#ffffff'
+                }
+              },
+              error: {
+                className:
+                  'bg-red-50 text-red-800 border border-red-200',
+                iconTheme: {
+                  primary: '#EF4444',
+                  secondary: '#ffffff'
+                }
+              }
+            }}
+          />
           {children}
         </AuthProvider>
       </body>
