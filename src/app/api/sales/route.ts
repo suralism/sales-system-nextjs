@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     
     await connectDB()
     
-    const { employeeId, type, items, notes } = await request.json()
+    const { employeeId, type, items, notes, settled } = await request.json()
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -176,7 +176,8 @@ export async function POST(request: NextRequest) {
         type,
         items: processedItems,
         totalAmount,
-        notes: notes?.trim()
+        notes: notes?.trim(),
+        settled: settled ?? false
       })
       
       await newSale.save({ session })

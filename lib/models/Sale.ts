@@ -19,6 +19,7 @@ export interface ISale extends mongoose.Document {
   items: ISaleItem[]
   totalAmount: number
   notes?: string
+  settled: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -104,6 +105,10 @@ const SaleSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: [500, 'Notes cannot exceed 500 characters']
+  },
+  settled: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
