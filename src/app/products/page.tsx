@@ -246,22 +246,31 @@ export default function ProductsPage() {
               <h1 className="text-2xl font-bold text-gray-900">จัดการสินค้า</h1>
               <p className="text-gray-600">เพิ่ม แก้ไข และจัดการสินค้าในระบบ</p>
             </div>
-            <div className="space-x-2">
-              <button
-                onClick={handleImportClick}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            <div className="flex flex-col items-end">
+              <div className="space-x-2">
+                <button
+                  onClick={handleImportClick}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  นำเข้าจาก CSV
+                </button>
+                <button
+                  onClick={() => {
+                    resetForm()
+                    setShowModal(true)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  เพิ่มสินค้าใหม่
+                </button>
+              </div>
+              <a
+                href="/sample-products.csv"
+                download
+                className="mt-2 text-sm text-blue-600 hover:underline"
               >
-                นำเข้าจาก CSV
-              </button>
-              <button
-                onClick={() => {
-                  resetForm()
-                  setShowModal(true)
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                เพิ่มสินค้าใหม่
-              </button>
+                ดาวน์โหลดไฟล์ตัวอย่าง
+              </a>
             </div>
           </div>
 
