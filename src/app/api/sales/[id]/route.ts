@@ -67,14 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await connectDB()
 
     const saleId = params.id
-    const { items, notes, settled } = await request.json()
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Sale items are required' },
-        { status: 400 }
-      )
-    }
+    const { items, notes, settled, paidAmount, paymentMethod } = await request.json()
 
     const sale = await Sale.findById(saleId)
     if (!sale) {
@@ -95,105 +88,122 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    if (items && Array.isArray(items) && items.length > 0) {
+      const session = await mongoose.startSession()
+      session.startTransaction()
 
-    try {
-      const oldItemsMap = new Map<string, ISaleItem>()
-      ;(sale.items as ISaleItem[]).forEach(item => {
-        oldItemsMap.set(item.productId.toString(), item)
-      })
-
-      const newProcessedItems: ISaleItem[] = []
-      let totalAmount = 0
-      const stockAdjustments = new Map<string, number>()
-
-      for (const item of items) {
-        const { productId, withdrawal, return: returnQty, defective } = item
-        if (!productId) {
-          throw new Error('Invalid item data: productId is missing')
-        }
-
-        const product = await Product.findById(productId).session(session)
-        if (!product || !product.isActive) {
-          throw new Error(`Product not found: ${productId}`)
-        }
-
-        const priceInfo = product.prices.find((p: { level: string; value: number }) => p.level === employee.priceLevel)
-        if (!priceInfo) {
-          throw new Error(`Price for level ${employee.priceLevel} not found for product ${product.name}`)
-        }
-        const price = priceInfo.value
-
-        const netStockChange = (returnQty || 0) - (withdrawal || 0)
-        const oldItem = oldItemsMap.get(productId.toString())
-        const oldNetStock = oldItem ? (oldItem.return - oldItem.withdrawal) : 0
-        const deltaStock = netStockChange - oldNetStock
-
-        if (product.stock + deltaStock < 0) {
-          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`)
-        }
-
-        if (deltaStock !== 0) {
-          stockAdjustments.set(productId.toString(), deltaStock)
-        }
-
-        const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
-        const itemTotalPrice = price * netQuantity
-        totalAmount += itemTotalPrice
-
-        newProcessedItems.push({
-          productId: product._id,
-          productName: product.name,
-          pricePerUnit: price,
-          withdrawal: withdrawal || 0,
-          return: returnQty || 0,
-          defective: defective || 0,
-          totalPrice: itemTotalPrice
+      try {
+        const oldItemsMap = new Map<string, ISaleItem>()
+        ;(sale.items as ISaleItem[]).forEach(item => {
+          oldItemsMap.set(item.productId.toString(), item)
         })
 
-        oldItemsMap.delete(productId.toString())
-      }
+        const newProcessedItems: ISaleItem[] = []
+        let totalAmount = 0
+        const stockAdjustments = new Map<string, number>()
 
-      // Handle removed items
-      for (const [productId, oldItem] of oldItemsMap) {
-        const revertStock = oldItem.withdrawal - oldItem.return
-        if (revertStock !== 0) {
+        for (const item of items) {
+          const { productId, withdrawal, return: returnQty, defective } = item
+          if (!productId) {
+            throw new Error('Invalid item data: productId is missing')
+          }
+
           const product = await Product.findById(productId).session(session)
           if (!product || !product.isActive) {
             throw new Error(`Product not found: ${productId}`)
           }
-          if (product.stock + revertStock < 0) {
+
+          const priceInfo = product.prices.find((p: { level: string; value: number }) => p.level === employee.priceLevel)
+          if (!priceInfo) {
+            throw new Error(`Price for level ${employee.priceLevel} not found for product ${product.name}`)
+          }
+          const price = priceInfo.value
+
+          const netStockChange = (returnQty || 0) - (withdrawal || 0)
+          const oldItem = oldItemsMap.get(productId.toString())
+          const oldNetStock = oldItem ? (oldItem.return - oldItem.withdrawal) : 0
+          const deltaStock = netStockChange - oldNetStock
+
+          if (product.stock + deltaStock < 0) {
             throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`)
           }
-          stockAdjustments.set(productId, (stockAdjustments.get(productId) || 0) + revertStock)
+
+          if (deltaStock !== 0) {
+            stockAdjustments.set(productId.toString(), deltaStock)
+          }
+
+          const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
+          const itemTotalPrice = price * netQuantity
+          totalAmount += itemTotalPrice
+
+          newProcessedItems.push({
+            productId: product._id,
+            productName: product.name,
+            pricePerUnit: price,
+            withdrawal: withdrawal || 0,
+            return: returnQty || 0,
+            defective: defective || 0,
+            totalPrice: itemTotalPrice
+          })
+
+          oldItemsMap.delete(productId.toString())
         }
-      }
 
-      for (const [productId, delta] of stockAdjustments) {
-        await Product.findByIdAndUpdate(
-          productId,
-          { $inc: { stock: delta } },
-          { session }
-        )
-      }
+        // Handle removed items
+        for (const [productId, oldItem] of oldItemsMap) {
+          const revertStock = oldItem.withdrawal - oldItem.return
+          if (revertStock !== 0) {
+            const product = await Product.findById(productId).session(session)
+            if (!product || !product.isActive) {
+              throw new Error(`Product not found: ${productId}`)
+            }
+            if (product.stock + revertStock < 0) {
+              throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`)
+            }
+            stockAdjustments.set(productId, (stockAdjustments.get(productId) || 0) + revertStock)
+          }
+        }
 
-      sale.items = newProcessedItems
-      sale.totalAmount = totalAmount
-      sale.notes = notes?.trim()
+        for (const [productId, delta] of stockAdjustments) {
+          await Product.findByIdAndUpdate(
+            productId,
+            { $inc: { stock: delta } },
+            { session }
+          )
+        }
+
+        sale.items = newProcessedItems
+        sale.totalAmount = totalAmount
+        sale.notes = notes?.trim()
+        if (typeof settled === 'boolean') {
+          sale.settled = settled
+        }
+        sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
+        await sale.save({ session })
+
+        await session.commitTransaction()
+
+        return NextResponse.json({ message: 'Sale updated successfully', sale })
+      } catch (error) {
+        await session.abortTransaction()
+        throw error
+      } finally {
+        session.endSession()
+      }
+    } else {
+      sale.notes = notes?.trim() ?? sale.notes
+      if (typeof paidAmount === 'number') {
+        sale.paidAmount = paidAmount
+      }
+      if (paymentMethod) {
+        sale.paymentMethod = paymentMethod
+      }
       if (typeof settled === 'boolean') {
         sale.settled = settled
       }
-      await sale.save({ session })
-
-      await session.commitTransaction()
-
-      return NextResponse.json({ message: 'Sale updated successfully', sale })
-    } catch (error) {
-      await session.abortTransaction()
-      throw error
-    } finally {
-      session.endSession()
+      sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
+      await sale.save()
+      return NextResponse.json({ message: 'Sale settlement updated successfully', sale })
     }
   } catch (error: unknown) {
     console.error('Update sale error:', error)
