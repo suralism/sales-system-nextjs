@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import Button from '@/components/Button'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -117,12 +118,12 @@ export default function Layout({ children }: LayoutProps) {
                   {user?.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
                 </span>
               </div>
-              <button
+              <Button
                 onClick={handleLogout}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                variant="danger"
               >
                 ออกจากระบบ
-              </button>
+              </Button>
             </div>
           </div>
         </header>
