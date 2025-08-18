@@ -21,8 +21,12 @@ export default function LoginPage() {
     try {
       await login(username, password)
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
+      } else {
+        setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
+      }
     } finally {
       setLoading(false)
     }

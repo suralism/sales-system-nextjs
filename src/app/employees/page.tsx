@@ -68,7 +68,7 @@ export default function EmployeesPage() {
       const url = editingEmployee ? `/api/users/${editingEmployee._id}` : '/api/users'
       const method = editingEmployee ? 'PUT' : 'POST'
       
-      const submitData: any = {
+      const submitData: Record<string, unknown> = {
         username: formData.username,
         email: formData.email,
         name: formData.name,
@@ -155,14 +155,6 @@ export default function EmployeesPage() {
       priceLevel: 'ราคาปกติ'
     })
     setEditingEmployee(null)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
   }
 
   if (loading) {

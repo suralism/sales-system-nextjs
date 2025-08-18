@@ -71,7 +71,7 @@ export async function PUT(
       )
     }
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (name !== undefined) {
       const existingProduct = await Product.findOne({

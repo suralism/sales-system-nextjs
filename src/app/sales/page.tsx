@@ -51,6 +51,7 @@ export default function SalesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const [formData, setFormData] = useState({
@@ -125,8 +126,11 @@ export default function SalesPage() {
         notes: formData.notes
       }
       
-      const response = await fetch('/api/sales', {
-        method: 'POST',
+      const url = editingSaleId ? `/api/sales/${editingSaleId}` : '/api/sales'
+      const method = editingSaleId ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -138,7 +142,7 @@ export default function SalesPage() {
         await fetchData()
         setShowModal(false)
         resetForm()
-        toast.success('บันทึกการขายสำเร็จ')
+        toast.success(editingSaleId ? 'อัปเดตการขายสำเร็จ' : 'บันทึกการขายสำเร็จ')
       } else {
         const error = await response.json()
         toast.error(error.error || 'เกิดข้อผิดพลาด')
@@ -157,6 +161,7 @@ export default function SalesPage() {
       notes: ''
     })
     setSearchTerm('')
+    setEditingSaleId(null)
   }
 
   const addProductToForm = (product: Product) => {
@@ -198,12 +203,12 @@ export default function SalesPage() {
     setFormData({ ...formData, items: newItems })
   }
 
-  const updateItem = (index: number, field: keyof SaleItem, value: any) => {
+  const updateItem = (index: number, field: keyof SaleItem, value: string) => {
     const newItems = [...formData.items]
     const item = newItems[index]
     if (field === 'withdrawal' || field === 'return' || field === 'defective') {
         (item[field] as number) = parseInt(value, 10) || 0;
-    } 
+    }
     setFormData({ ...formData, items: newItems })
   }
 
@@ -239,6 +244,24 @@ export default function SalesPage() {
       }
     }
   };
+
+  const handleEdit = (sale: Sale) => {
+    setEditingSaleId(sale._id)
+    setFormData({
+      employeeId: sale.employeeId,
+      type: sale.type,
+      items: sale.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        pricePerUnit: item.pricePerUnit,
+        withdrawal: item.withdrawal,
+        return: item.return,
+        defective: item.defective
+      })),
+      notes: sale.notes || ''
+    })
+    setShowModal(true)
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -343,7 +366,7 @@ export default function SalesPage() {
                         <div className="space-y-1">
                           {sale.items.map((item, index) => (
                             <div key={index}>
-                              {item.productName} × {item.withdrawal}
+                              {item.productName} - เบิก {item.withdrawal}, คืน {item.return}, เสีย {item.defective}
                             </div>
                           ))}
                         </div>
@@ -351,7 +374,15 @@ export default function SalesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(sale.totalAmount)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                        {(user?.role === 'admin' || user?.id === sale.employeeId) && (
+                          <button
+                            onClick={() => handleEdit(sale)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Edit
+                          </button>
+                        )}
                         {user?.role === 'admin' && (
                           <button
                             onClick={() => handleDelete(sale._id)}
@@ -374,7 +405,7 @@ export default function SalesPage() {
               <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
                 <div className="mt-3">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    บันทึกการขายใหม่
+                    {editingSaleId ? 'แก้ไขการขาย' : 'บันทึกการขายใหม่'}
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -386,7 +417,8 @@ export default function SalesPage() {
                         required
                         value={formData.employeeId}
                         onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!!editingSaleId}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                       >
                         <option value="">เลือกพนักงาน</option>
                         {employees.map((employee) => (
@@ -509,7 +541,7 @@ export default function SalesPage() {
                         type="submit"
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                       >
-                        บันทึกการขาย
+                        {editingSaleId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการขาย'}
                       </button>
                     </div>
                   </form>
