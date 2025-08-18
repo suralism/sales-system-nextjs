@@ -292,7 +292,7 @@ export default function ProductsPage() {
                       สินค้า
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ราคาปกติ
+                      ราคา
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       สต็อก
@@ -319,13 +319,18 @@ export default function ProductsPage() {
                             className="w-full px-2 py-1 border border-gray-300 rounded"
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <input
-                            type="number"
-                            value={formData.prices[0].value}
-                            onChange={(e) => handlePriceChange(0, e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
-                          />
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-y-1">
+                          {formData.prices.map((price, index) => (
+                            <div key={price.level} className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500 w-24">{price.level}</span>
+                              <input
+                                type="number"
+                                value={price.value}
+                                onChange={(e) => handlePriceChange(index, e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </div>
+                          ))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <input
