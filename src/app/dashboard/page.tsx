@@ -5,6 +5,21 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import { useAuth } from '@/contexts/AuthContext'
 
+interface RecentSale {
+  employeeName: string
+  type: string
+  saleDate: string
+  totalAmount: number
+  items: unknown[]
+}
+
+interface LowStockProduct {
+  name: string
+  category: string
+  stock: number
+  price: number
+}
+
 interface DashboardData {
   summary: {
     totalProducts: number
@@ -14,8 +29,8 @@ interface DashboardData {
     totalSalesAmount: number
     totalSalesCount: number
   }
-  recentSales: any[]
-  lowStockProducts?: any[]
+  recentSales: RecentSale[]
+  lowStockProducts?: LowStockProduct[]
 }
 
 export default function DashboardPage() {

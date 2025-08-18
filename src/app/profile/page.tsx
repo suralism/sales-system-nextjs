@@ -41,7 +41,7 @@ export default function ProfilePage() {
     setLoading(true)
     
     try {
-      const submitData: any = {
+      const submitData: Record<string, unknown> = {
         name: formData.name,
         position: formData.position,
         phone: formData.phone,

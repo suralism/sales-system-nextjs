@@ -91,7 +91,7 @@ export async function PUT(
     }
     
     // Prepare update object
-    const allowedUpdates: any = {}
+    const allowedUpdates: Record<string, unknown> = {}
     
     if (currentUser.role === 'admin') {
       // Admin can update all fields
