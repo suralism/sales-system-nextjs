@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
     
-    const salesQuery: Record<string, unknown> = {}
+    const salesQuery: Record<string, unknown> = { settled: true }
     
     if (currentUser.role === 'employee') {
       // Employee can only see their own statistics

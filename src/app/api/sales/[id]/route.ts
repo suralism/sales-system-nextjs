@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await connectDB()
 
     const saleId = params.id
-    const { items, notes } = await request.json()
+    const { items, notes, settled } = await request.json()
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -79,6 +79,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const sale = await Sale.findById(saleId)
     if (!sale) {
       return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
+    }
+
+    if (sale.settled) {
+      return NextResponse.json({ error: 'Sale already settled' }, { status: 400 })
     }
 
     // Only admin or the employee who owns the sale can update
@@ -177,6 +181,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       sale.items = newProcessedItems
       sale.totalAmount = totalAmount
       sale.notes = notes?.trim()
+      if (typeof settled === 'boolean') {
+        sale.settled = settled
+      }
       await sale.save({ session })
 
       await session.commitTransaction()

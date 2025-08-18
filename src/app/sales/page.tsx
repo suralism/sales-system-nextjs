@@ -42,6 +42,7 @@ interface Sale {
   items: SaleItem[]
   totalAmount: number
   notes?: string
+  settled: boolean
 }
 
 export default function SalesPage() {
@@ -58,7 +59,8 @@ export default function SalesPage() {
     employeeId: '',
     type: 'เบิก' as 'เบิก' | 'คืน',
     items: [] as SaleItem[],
-    notes: ''
+    notes: '',
+    settled: false
   })
 
   const selectedEmployee = useMemo(() => {
@@ -123,7 +125,8 @@ export default function SalesPage() {
         employeeId: formData.employeeId,
         type: formData.type,
         items: processedItems,
-        notes: formData.notes
+        notes: formData.notes,
+        settled: formData.settled
       }
       
       const url = editingSaleId ? `/api/sales/${editingSaleId}` : '/api/sales'
@@ -158,7 +161,8 @@ export default function SalesPage() {
       employeeId: '',
       type: 'เบิก',
       items: [],
-      notes: ''
+      notes: '',
+      settled: false
     })
     setSearchTerm('')
     setEditingSaleId(null)
@@ -258,7 +262,8 @@ export default function SalesPage() {
         return: item.return,
         defective: item.defective
       })),
-      notes: sale.notes || ''
+      notes: sale.notes || '',
+      settled: sale.settled
     })
     setShowModal(true)
   }
@@ -342,6 +347,9 @@ export default function SalesPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ยอดรวม
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      สถานะ
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -374,8 +382,15 @@ export default function SalesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(sale.totalAmount)}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {sale.settled ? (
+                          <span className="text-green-600">เคลียบิลแล้ว</span>
+                        ) : (
+                          <span className="text-yellow-600">รอเคลียบิล</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                        {(user?.role === 'admin' || user?.id === sale.employeeId) && (
+                        {(user?.role === 'admin' || user?.id === sale.employeeId) && !sale.settled && (
                           <button
                             onClick={() => handleEdit(sale)}
                             className="text-blue-600 hover:text-blue-900"
@@ -519,6 +534,21 @@ export default function SalesPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
+
+                    {editingSaleId && (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          id="settled"
+                          type="checkbox"
+                          checked={formData.settled}
+                          onChange={e => setFormData({ ...formData, settled: e.target.checked })}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <label htmlFor="settled" className="text-sm font-medium text-gray-700">
+                          เคลียบิลแล้ว
+                        </label>
+                      </div>
+                    )}
 
                     <div className="bg-gray-50 p-4 rounded-md flex justify-between items-center">
                       <div className="text-lg font-medium text-gray-900">
