@@ -19,6 +19,9 @@ export interface ISale extends mongoose.Document {
   items: ISaleItem[]
   totalAmount: number
   notes?: string
+  paidAmount: number
+  paymentMethod: 'cash' | 'transfer' | 'customer_pending'
+  pendingAmount: number
   settled: boolean
   createdAt: Date
   updatedAt: Date
@@ -100,6 +103,21 @@ const SaleSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Total amount is required'],
     min: [0, 'Total amount cannot be negative']
+  },
+  paidAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Paid amount cannot be negative']
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'transfer', 'customer_pending'],
+    default: 'cash'
+  },
+  pendingAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Pending amount cannot be negative']
   },
   notes: {
     type: String,

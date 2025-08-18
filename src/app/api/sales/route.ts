@@ -177,6 +177,9 @@ export async function POST(request: NextRequest) {
         items: processedItems,
         totalAmount,
         notes: notes?.trim(),
+        paidAmount: 0,
+        paymentMethod: 'cash',
+        pendingAmount: totalAmount,
         settled: settled ?? false
       })
       

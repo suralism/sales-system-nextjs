@@ -42,6 +42,9 @@ interface Sale {
   items: SaleItem[]
   totalAmount: number
   notes?: string
+  paidAmount: number
+  paymentMethod: string
+  pendingAmount: number
   settled: boolean
 }
 
@@ -59,8 +62,7 @@ export default function SalesPage() {
     employeeId: '',
     type: 'เบิก' as 'เบิก' | 'คืน',
     items: [] as SaleItem[],
-    notes: '',
-    settled: false
+    notes: ''
   })
 
   const selectedEmployee = useMemo(() => {
@@ -125,8 +127,7 @@ export default function SalesPage() {
         employeeId: formData.employeeId,
         type: formData.type,
         items: processedItems,
-        notes: formData.notes,
-        settled: formData.settled
+        notes: formData.notes
       }
       
       const url = editingSaleId ? `/api/sales/${editingSaleId}` : '/api/sales'
@@ -161,8 +162,7 @@ export default function SalesPage() {
       employeeId: '',
       type: 'เบิก',
       items: [],
-      notes: '',
-      settled: false
+      notes: ''
     })
     setSearchTerm('')
     setEditingSaleId(null)
@@ -262,8 +262,7 @@ export default function SalesPage() {
         return: item.return,
         defective: item.defective
       })),
-      notes: sale.notes || '',
-      settled: sale.settled
+      notes: sale.notes || ''
     })
     setShowModal(true)
   }
@@ -534,21 +533,6 @@ export default function SalesPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-
-                    {editingSaleId && (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          id="settled"
-                          type="checkbox"
-                          checked={formData.settled}
-                          onChange={e => setFormData({ ...formData, settled: e.target.checked })}
-                          className="h-4 w-4 text-blue-600"
-                        />
-                        <label htmlFor="settled" className="text-sm font-medium text-gray-700">
-                          เคลียบิลแล้ว
-                        </label>
-                      </div>
-                    )}
 
                     <div className="bg-gray-50 p-4 rounded-md flex justify-between items-center">
                       <div className="text-lg font-medium text-gray-900">
