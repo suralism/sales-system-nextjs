@@ -30,6 +30,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -95,8 +96,8 @@ export default function ProductsPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     
     try {
       const url = editingProduct ? `/api/products/${editingProduct._id}` : '/api/products'
@@ -128,6 +129,7 @@ export default function ProductsPage() {
         toast.success(`Product ${editingProduct ? 'updated' : 'created'} successfully!`)
         await fetchProducts()
         setShowModal(false)
+        setEditingProductId(null)
         resetForm()
       } else {
         const error = await response.json()
@@ -141,6 +143,7 @@ export default function ProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
+    setEditingProductId(product._id)
     const newPrices = priceLevels.map(level => {
         // If new price structure exists, use it
         if (product.prices && product.prices.length > 0) {
@@ -161,7 +164,11 @@ export default function ProductsPage() {
       description: product.description || '',
       category: product.category || ''
     })
-    setShowModal(true)
+  }
+
+  const cancelEdit = () => {
+    setEditingProductId(null)
+    resetForm()
   }
 
   const handleDelete = async (productId: string) => {
@@ -292,7 +299,58 @@ export default function ProductsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {products.map((product) => {
                     const needsUpdate = !product.prices || product.prices.length === 0;
-                    return (
+                    const isEditing = editingProductId === product._id;
+                    return isEditing ? (
+                      <tr key={product._id} className="bg-yellow-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <input
+                            type="number"
+                            value={formData.prices[0].value}
+                            onChange={(e) => handlePriceChange(0, e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="number"
+                            value={formData.stock}
+                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {needsUpdate && (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
+                              รออัปเดต
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleSubmit()}
+                            className="text-green-600 hover:text-green-900"
+                            type="button"
+                          >
+                            บันทึก
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="text-gray-600 hover:text-gray-900"
+                            type="button"
+                          >
+                            ยกเลิก
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
                       <tr key={product._id} className={`hover:bg-gray-50 ${needsUpdate ? 'bg-yellow-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -307,8 +365,8 @@ export default function ProductsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.stock <= 10 
-                              ? 'bg-red-100 text-red-800' 
+                            product.stock <= 10
+                              ? 'bg-red-100 text-red-800'
                               : 'bg-green-100 text-green-800'
                           }`}>
                             {product.stock} ชิ้น
@@ -336,8 +394,8 @@ export default function ProductsPage() {
                           </button>
                         </td>
                       </tr>
-                    )}
-                  )}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
