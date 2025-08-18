@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import toast from 'react-hot-toast';
@@ -30,6 +30,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     prices: priceLevels.map(level => ({ level, value: '' as string | number})),
@@ -60,6 +61,37 @@ export default function ProductsPage() {
       toast.error('Failed to fetch products.');
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const response = await fetch('/api/products/import', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`นำเข้าสำเร็จ ${data.imported} รายการ, ข้าม ${data.skipped} รายการ`)
+        await fetchProducts()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Import failed')
+      }
+    } catch (error) {
+      console.error('Import error:', error)
+      toast.error('Import failed')
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -207,16 +239,32 @@ export default function ProductsPage() {
               <h1 className="text-2xl font-bold text-gray-900">จัดการสินค้า</h1>
               <p className="text-gray-600">เพิ่ม แก้ไข และจัดการสินค้าในระบบ</p>
             </div>
-            <button
-              onClick={() => {
-                resetForm()
-                setShowModal(true)
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              เพิ่มสินค้าใหม่
-            </button>
+            <div className="space-x-2">
+              <button
+                onClick={handleImportClick}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                นำเข้าจาก CSV
+              </button>
+              <button
+                onClick={() => {
+                  resetForm()
+                  setShowModal(true)
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                เพิ่มสินค้าใหม่
+              </button>
+            </div>
           </div>
+
+          <input
+            type="file"
+            accept=".csv"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+          />
 
           {/* Products Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
