@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
+import Button from '@/components/Button'
 import toast from 'react-hot-toast';
 
 interface Employee {
@@ -30,6 +31,7 @@ export default function EmployeesPage() {
   const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -68,11 +70,11 @@ export default function EmployeesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    setSubmitting(true)
     try {
       const url = editingEmployee ? `/api/users/${editingEmployee._id}` : '/api/users'
       const method = editingEmployee ? 'PUT' : 'POST'
-      
+
       const submitData: Record<string, unknown> = {
         username: formData.username,
         email: formData.email,
@@ -86,7 +88,7 @@ export default function EmployeesPage() {
       if (formData.password) {
         submitData.password = formData.password
       }
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -108,6 +110,8 @@ export default function EmployeesPage() {
     } catch (error) {
       console.error('Submit error:', error)
       toast.error('An error occurred while saving employee data.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -370,12 +374,13 @@ export default function EmployeesPage() {
                       >
                         ยกเลิก
                       </button>
-                      <button
+                      <Button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                        isLoading={submitting}
+                        className="px-4 py-2 text-sm"
                       >
                         {editingEmployee ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 </div>
