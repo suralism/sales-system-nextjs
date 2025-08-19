@@ -16,8 +16,6 @@ interface Product {
   name: string
   prices: Price[];
   price?: number; // Keep optional for old data
-  stock: number
-  description?: string
   category?: CategoryType
   isActive: boolean
   createdAt: string
@@ -36,8 +34,6 @@ export default function ProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     prices: priceLevels.map(level => ({ level, value: '' as string | number })),
-    stock: '',
-    description: '',
     category: '' as CategoryType | ''
   })
 
@@ -119,8 +115,6 @@ export default function ProductsPage() {
         body: JSON.stringify({
           name: formData.name,
           prices: processedPrices,
-          stock: parseInt(formData.stock),
-          description: formData.description,
           category: formData.category
         }),
         credentials: 'include'
@@ -161,8 +155,6 @@ export default function ProductsPage() {
     setFormData({
       name: product.name,
       prices: newPrices,
-      stock: product.stock.toString(),
-      description: product.description || '',
       category: product.category || ''
     })
   }
@@ -198,8 +190,6 @@ export default function ProductsPage() {
     setFormData({
       name: '',
       prices: priceLevels.map(level => ({ level, value: '' as string | number})),
-      stock: '',
-      description: '',
       category: '' as CategoryType | ''
     })
     setEditingProduct(null)
@@ -296,9 +286,6 @@ export default function ProductsPage() {
                       ราคา
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สต็อก
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       สถานะ
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -333,14 +320,6 @@ export default function ProductsPage() {
                             </div>
                           ))}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="number"
-                            value={formData.stock}
-                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
-                          />
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {needsUpdate && (
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
@@ -368,24 +347,10 @@ export default function ProductsPage() {
                     ) : (
                       <tr key={product._id} className={`hover:bg-gray-50 ${needsUpdate ? 'bg-yellow-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            {product.description && (
-                              <div className="text-sm text-gray-500">{product.description}</div>
-                            )}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatCurrency(getNormalPrice(product))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.stock <= 10
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {product.stock} ชิ้น
-                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {needsUpdate && (
@@ -458,20 +423,6 @@ export default function ProductsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        จำนวนสต็อก *
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         หมวดหมู่ *
                       </label>
                       <select
@@ -485,18 +436,6 @@ export default function ProductsPage() {
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        รายละเอียด
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-4">

@@ -65,15 +65,8 @@ export async function POST(request: NextRequest) {
 
     for (const record of records) {
       const name = record['name']?.trim()
-      const stockStr = record['stock']?.trim()
 
-      if (!name || !stockStr) {
-        skipped++
-        continue
-      }
-
-      const stock = parseInt(stockStr, 10)
-      if (isNaN(stock)) {
+      if (!name) {
         skipped++
         continue
       }
@@ -112,8 +105,6 @@ export async function POST(request: NextRequest) {
       await Product.create({
         name,
         prices,
-        stock,
-        description: record['description']?.trim() || undefined,
         category
       })
 

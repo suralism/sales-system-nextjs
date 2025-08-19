@@ -10,8 +10,6 @@ export interface IProduct extends mongoose.Document {
   _id: string
   name: string
   prices: IPrice[];
-  stock: number
-  description?: string
   category: CategoryType
   isActive: boolean
   createdAt: Date
@@ -47,22 +45,6 @@ const ProductSchema = new mongoose.Schema({
       },
       message: 'At least one price level is required.'
     }
-  },
-  stock: {
-    type: Number,
-    required: [true, 'Stock quantity is required'],
-    min: [0, 'Stock cannot be negative'],
-    validate: {
-      validator: function(value: number) {
-        return Number.isInteger(value) && value >= 0
-      },
-      message: 'Stock must be a valid non-negative integer'
-    }
-  },
-  description: {
-    type: String,
-    trim: true,
-    maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   category: {
     type: String,

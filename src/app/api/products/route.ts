@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
     
     await connectDB()
 
-    const { name, prices, stock, description, category } = await request.json()
+    const { name, prices, category } = await request.json()
 
     // Validate required fields
-    if (!name || !prices || !Array.isArray(prices) || prices.length === 0 || stock === undefined || !category) {
+    if (!name || !prices || !Array.isArray(prices) || prices.length === 0 || !category) {
       return NextResponse.json(
-        { error: 'Name, prices, stock, and category are required' },
+        { error: 'Name, prices, and category are required' },
         { status: 400 }
       )
     }
@@ -61,14 +61,6 @@ export async function POST(request: NextRequest) {
     if (!CATEGORY_TYPES.includes(trimmedCategory)) {
       return NextResponse.json(
         { error: 'Invalid category' },
-        { status: 400 }
-      )
-    }
-    
-    // Validate stock
-    if (stock < 0) {
-      return NextResponse.json(
-        { error: 'Stock must be non-negative' },
         { status: 400 }
       )
     }
@@ -90,8 +82,6 @@ export async function POST(request: NextRequest) {
     const newProduct = new Product({
       name: name.trim(),
       prices,
-      stock: Number(stock),
-      description: description?.trim(),
       category: trimmedCategory
     })
     
