@@ -7,8 +7,9 @@ import { getUserFromRequest } from '../../../../../lib/auth'
 // GET - Get specific product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -20,8 +21,6 @@ export async function GET(
     }
     
     await connectDB()
-    
-    const { id } = params
     
     const product = await Product.findById(id).lean()
     
@@ -46,8 +45,9 @@ export async function GET(
 // PUT - Update product (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -59,8 +59,6 @@ export async function PUT(
     }
     
     await connectDB()
-    
-    const { id } = params
     const { name, prices, category } = await request.json()
     
     const product = await Product.findById(id)
@@ -139,8 +137,9 @@ export async function PUT(
 // DELETE - Delete product (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -152,8 +151,6 @@ export async function DELETE(
     }
     
     await connectDB()
-    
-    const { id } = params
     
     const updatedProduct = await Product.findByIdAndUpdate(
       id,

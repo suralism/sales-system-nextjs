@@ -6,7 +6,11 @@ import User from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 import mongoose from 'mongoose'
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: saleId } = await params
   try {
     const currentUser = getUserFromRequest(request)
     if (!currentUser || currentUser.role !== 'admin') {
@@ -14,8 +18,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await connectDB()
-
-    const saleId = params.id
 
     const session = await mongoose.startSession()
     session.startTransaction()
@@ -47,7 +49,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 }
 
 // PUT - Update existing sale
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: saleId } = await params
   try {
     const currentUser = getUserFromRequest(request)
     if (!currentUser) {
@@ -55,8 +61,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     await connectDB()
-
-    const saleId = params.id
     const {
       items,
       notes,
