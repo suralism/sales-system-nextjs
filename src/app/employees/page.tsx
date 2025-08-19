@@ -377,7 +377,7 @@ export default function EmployeesPage() {
                       <Button
                         type="submit"
                         isLoading={submitting}
-                        className="px-4 py-2 text-sm"
+                        className="px-4 py-2 text-sm transform hover:scale-105 active:scale-95"
                       >
                         {editingEmployee ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
                       </Button>

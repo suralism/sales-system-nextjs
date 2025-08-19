@@ -338,7 +338,7 @@ export default function ProductsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
                             onClick={() => handleSubmit()}
-                            className="text-green-600 hover:text-green-900"
+                            className="text-green-600 hover:text-green-900 transform transition-all hover:scale-105 active:scale-95"
                             type="button"
                           >
                             บันทึก
@@ -453,7 +453,7 @@ export default function ProductsPage() {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transform transition-all hover:scale-105 active:scale-95"
                       >
                         {editingProduct ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า'}
                       </button>
