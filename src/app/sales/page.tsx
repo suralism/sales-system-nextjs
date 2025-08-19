@@ -28,9 +28,9 @@ interface SaleItem {
   productId: string
   productName: string
   pricePerUnit: number
-  withdrawal: number
-  return: number
-  defective: number
+  withdrawal: number | ''
+  return: number | ''
+  defective: number | ''
 }
 
 interface Sale {
@@ -93,20 +93,30 @@ export default function SalesPage() {
 
   const detailSummary = useMemo(() => {
     if (!detailSale) return null
-    const totalWithdrawn = detailSale.items.reduce((sum, item) => sum + item.withdrawal, 0)
-    const totalAmount = detailSale.items.reduce(
-      (sum, item) => sum + item.pricePerUnit * item.withdrawal,
+    const totalWithdrawn = detailSale.items.reduce(
+      (sum, item) => sum + (Number(item.withdrawal) || 0),
       0
     )
-    const totalReturn = detailSale.items.reduce((sum, item) => sum + item.return, 0)
-    const totalDefective = detailSale.items.reduce((sum, item) => sum + item.defective, 0)
+    const totalAmount = detailSale.items.reduce(
+      (sum, item) => sum + item.pricePerUnit * (Number(item.withdrawal) || 0),
+      0
+    )
+    const totalReturn = detailSale.items.reduce(
+      (sum, item) => sum + (Number(item.return) || 0),
+      0
+    )
+    const totalDefective = detailSale.items.reduce(
+      (sum, item) => sum + (Number(item.defective) || 0),
+      0
+    )
     const totalSold = detailSale.items.reduce(
-      (sum, item) => sum + item.withdrawal - item.return - item.defective,
+      (sum, item) =>
+        sum + (Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0),
       0
     )
     const totalSoldAmount = detailSale.items.reduce(
       (sum, item) =>
-        sum + (item.withdrawal - item.return - item.defective) * item.pricePerUnit,
+        sum + ((Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)) * item.pricePerUnit,
       0
     )
     return {
@@ -166,9 +176,9 @@ export default function SalesPage() {
     try {
       const processedItems = formData.items.map(item => ({
         productId: item.productId,
-        withdrawal: item.withdrawal,
-        return: item.return,
-        defective: item.defective,
+        withdrawal: Number(item.withdrawal) || 0,
+        return: Number(item.return) || 0,
+        defective: Number(item.defective) || 0,
       }))
 
       const submitData = {
@@ -236,7 +246,7 @@ export default function SalesPage() {
     const existingIndex = formData.items.findIndex(item => item.productId === product._id)
     if (existingIndex >= 0) {
       const updatedItems = [...formData.items]
-      updatedItems[existingIndex].withdrawal += 1
+      updatedItems[existingIndex].withdrawal = (Number(updatedItems[existingIndex].withdrawal) || 0) + 1
       setFormData({ ...formData, items: updatedItems })
     } else {
       const newItem: SaleItem = {
@@ -282,8 +292,8 @@ export default function SalesPage() {
   const updateItem = (index: number, field: keyof SaleItem, value: string) => {
     const newItems = [...formData.items]
     const item = newItems[index]
-    if (field === 'withdrawal') {
-        (item[field] as number) = parseInt(value, 10) || 0;
+    if (field === 'withdrawal' || field === 'return' || field === 'defective') {
+      ;(item[field] as number | '') = value === '' ? '' : parseInt(value, 10)
     }
     setFormData({ ...formData, items: newItems })
   }
@@ -292,7 +302,10 @@ export default function SalesPage() {
     let amount = 0
     let items = 0
     formData.items.forEach(item => {
-      const netQuantity = item.withdrawal - item.return - item.defective;
+      const w = Number(item.withdrawal) || 0
+      const r = Number(item.return) || 0
+      const d = Number(item.defective) || 0
+      const netQuantity = w - r - d
       amount += netQuantity * item.pricePerUnit
       items += netQuantity
     })
@@ -560,10 +573,10 @@ export default function SalesPage() {
                               <td className="px-4 py-2 whitespace-nowrap">{item.productName}</td>
                               <td className="px-4 py-2 whitespace-nowrap">{formatCurrency(item.pricePerUnit)}</td>
                               <td className="px-4 py-2">
-                                <input 
+                                <input
                                   type="number"
                                   min="0"
-                                  value={item.withdrawal}
+                                  value={item.withdrawal === '' ? '' : item.withdrawal}
                                   onChange={e => updateItem(index, 'withdrawal', e.target.value)}
                                   className="w-20 px-2 py-1 border border-gray-300 rounded-md"
                                 />
@@ -639,7 +652,10 @@ export default function SalesPage() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {detailSale.items.map((item, index) => {
-                          const sold = item.withdrawal - item.return - item.defective
+                          const sold =
+                            (Number(item.withdrawal) || 0) -
+                            (Number(item.return) || 0) -
+                            (Number(item.defective) || 0)
                           return (
                             <tr key={index}>
                               <td className="px-4 py-2">{item.productName}</td>
@@ -670,7 +686,7 @@ export default function SalesPage() {
                             <td className="px-4 py-2">{item.productName}</td>
                             <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
                             <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(item.withdrawal * item.pricePerUnit)}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency((Number(item.withdrawal) || 0) * item.pricePerUnit)}</td>
                           </tr>
                         ))}
                       </tbody>
