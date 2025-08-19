@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
-import User from '../../../../../lib/models/User'
+import User, { IUser } from '../../../../../lib/models/User'
 import { getUserFromRequest, hashPassword } from '../../../../../lib/auth'
 
 // GET - Get specific user
@@ -29,7 +29,7 @@ export async function GET(
       )
     }
     
-    const user = await User.findById(id)
+    const user = await User.findById<IUser>(id)
       .select('-password')
       .lean()
     
@@ -146,7 +146,7 @@ export async function PUT(
   } catch (error) {
     console.error('Update user error:', error)
     
-    if (error.name === 'ValidationError') {
+    if (error instanceof Error && error.name === 'ValidationError') {
       return NextResponse.json(
         { error: 'Validation error', details: error.message },
         { status: 400 }

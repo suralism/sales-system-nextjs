@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
-import Product from '../../../../../lib/models/Product'
+import Product, { IProduct } from '../../../../../lib/models/Product'
 import { CATEGORY_TYPES } from '../../../../../lib/constants'
 import { getUserFromRequest } from '../../../../../lib/auth'
 
@@ -22,7 +22,7 @@ export async function GET(
     
     await connectDB()
     
-    const product = await Product.findById(id).lean()
+    const product = await Product.findById<IProduct>(id).lean()
     
     if (!product || !product.isActive) {
       return NextResponse.json(
@@ -120,7 +120,7 @@ export async function PUT(
   } catch (error) {
     console.error('Update product error:', error)
     
-    if (error.name === 'ValidationError') {
+    if (error instanceof Error && error.name === 'ValidationError') {
       return NextResponse.json(
         { error: 'Validation error', details: error.message },
         { status: 400 }

@@ -15,7 +15,7 @@ export async function POST(
     }
 
     await connectDB()
-    const requisition = await Requisition.findOne({ _id: id, employeeId: currentUser._id, status: 'open' })
+    const requisition = await Requisition.findOne({ _id: id, employeeId: currentUser.userId, status: 'open' })
 
     if (!requisition) {
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 })

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB()
-    const requisition = await Requisition.findOne({ employeeId: currentUser._id, status: 'open' }).lean()
+    const requisition = await Requisition.findOne({ employeeId: currentUser.userId, status: 'open' }).lean()
     return NextResponse.json({ requisition })
   } catch (error) {
     console.error('Get current requisition error:', error)

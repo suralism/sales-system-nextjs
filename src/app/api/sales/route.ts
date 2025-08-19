@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../lib/database'
 import Sale, { ISale } from '../../../../lib/models/Sale'
-import Product from '../../../../lib/models/Product'
+import Product, { IPrice } from '../../../../lib/models/Product'
 import User from '../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../lib/auth'
 import mongoose from 'mongoose'
@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    const query: Record<string, unknown> = {}
+    const query: {
+      saleDate?: { $gte?: Date, $lte?: Date },
+      settled?: boolean,
+      employeeId?: mongoose.Types.ObjectId
+    } = {}
     
     if (currentUser.role === 'employee') {
       // Employee can only see their own sales
@@ -38,9 +42,14 @@ export async function GET(request: NextRequest) {
     const settled = searchParams.get('settled')
     
     if (startDate || endDate) {
-      query.saleDate = {}
-      if (startDate) query.saleDate.$gte = new Date(startDate)
-      if (endDate) query.saleDate.$lte = new Date(endDate)
+      const saleDateQuery: { $gte?: Date; $lte?: Date } = {};
+      if (startDate) {
+        saleDateQuery.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        saleDateQuery.$lte = new Date(endDate);
+      }
+      query.saleDate = saleDateQuery;
     }
 
     if (settled === 'true') query.settled = true
@@ -138,7 +147,7 @@ export async function POST(request: NextRequest) {
           throw new Error(`Product not found: ${productId}`)
         }
         
-        const priceInfo = product.prices.find(p => p.level === employee.priceLevel);
+        const priceInfo = product.prices.find((p: IPrice) => p.level === employee.priceLevel);
         if (!priceInfo) {
           throw new Error(`Price for level ${employee.priceLevel} not found for product ${product.name}`)
         }
@@ -250,8 +259,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create sale error:', error)
     
-    if (error.message.includes('Product not found') ||
-        error.message.includes('Invalid item data')) {
+    if (error instanceof Error && (error.message.includes('Product not found') ||
+        error.message.includes('Invalid item data'))) {
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

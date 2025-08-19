@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
 
-    let requisition = await Requisition.findOne({ employeeId: currentUser._id, status: 'open' })
+    let requisition = await Requisition.findOne({ employeeId: currentUser.userId, status: 'open' })
     if (!requisition) {
-      requisition = new Requisition({ employeeId: currentUser._id, items: [] })
+      requisition = new Requisition({ employeeId: currentUser.userId, items: [] })
     }
 
     for (const item of items) {

@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create product error:', error)
     
-    if (error.name === 'ValidationError') {
+    if (error instanceof Error && error.name === 'ValidationError') {
       return NextResponse.json(
         { error: 'Validation error', details: error.message },
         { status: 400 }

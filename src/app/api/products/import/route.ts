@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
 
       const category = record['category']?.trim()
-      if (!category || !CATEGORY_TYPES.includes(category)) {
+      if (!category || !(CATEGORY_TYPES as readonly string[]).includes(category)) {
         skipped++
         continue
       }
