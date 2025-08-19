@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { CATEGORY_TYPES, CategoryType } from '../constants'
 
 export interface IPrice extends mongoose.Document {
   level: string;
@@ -11,7 +12,7 @@ export interface IProduct extends mongoose.Document {
   prices: IPrice[];
   stock: number
   description?: string
-  category?: string
+  category: CategoryType
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -65,8 +66,9 @@ const ProductSchema = new mongoose.Schema({
   },
   category: {
     type: String,
+    enum: CATEGORY_TYPES,
+    required: [true, 'Category is required'],
     trim: true,
-    maxlength: [100, 'Category cannot exceed 100 characters']
   },
   isActive: {
     type: Boolean,
