@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import { useAuth } from '@/contexts/AuthContext'
@@ -63,6 +63,7 @@ export default function SalesPage() {
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [detailSale, setDetailSale] = useState<Sale | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -206,6 +207,7 @@ export default function SalesPage() {
     }
     setFormData({ ...formData, items: [...formData.items, newItem] })
     setSearchTerm('')
+    searchInputRef.current?.focus()
   }
 
   const removeItem = (index: number) => {
@@ -452,10 +454,11 @@ export default function SalesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         ค้นหาสินค้า
                       </label>
-                      <input 
+                      <input
                         type="text"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
+                        ref={searchInputRef}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา..."
                       />
