@@ -15,7 +15,6 @@ interface Product {
   _id: string
   name: string
   prices: Price[];
-  stock: number
 }
 
 interface Employee {

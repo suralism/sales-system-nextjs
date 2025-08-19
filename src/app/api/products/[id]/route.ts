@@ -61,7 +61,7 @@ export async function PUT(
     await connectDB()
     
     const { id } = params
-    const { name, prices, stock, description, category } = await request.json()
+    const { name, prices, category } = await request.json()
     
     const product = await Product.findById(id)
     
@@ -93,20 +93,6 @@ export async function PUT(
     
     if (prices !== undefined) {
       updateData.prices = prices
-    }
-    
-    if (stock !== undefined) {
-      if (stock < 0) {
-        return NextResponse.json(
-          { error: 'Stock must be non-negative' },
-          { status: 400 }
-        )
-      }
-      updateData.stock = Number(stock)
-    }
-    
-    if (description !== undefined) {
-      updateData.description = description?.trim()
     }
     
     if (category !== undefined) {
