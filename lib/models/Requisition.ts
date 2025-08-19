@@ -46,8 +46,11 @@ const RequisitionSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// Index for faster queries by employee and status
-RequisitionSchema.index({ employeeId: 1, status: 1 })
+// Ensure each employee has only one open requisition at a time
+// by enforcing a unique combination of employeeId and status.
+// This groups multiple item withdrawals into a single open bill
+// that can later be cleared in one action.
+RequisitionSchema.index({ employeeId: 1, status: 1 }, { unique: true })
 
 export default mongoose.models.Requisition || mongoose.model<IRequisition>('Requisition', RequisitionSchema)
 
