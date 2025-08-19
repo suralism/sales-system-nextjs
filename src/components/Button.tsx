@@ -1,25 +1,16 @@
-import React from 'react'
+import { Button as NextUIButton, extendVariants } from "@nextui-org/react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger'
-}
+const CustomButton = extendVariants(NextUIButton, {
+  variants: {
+    color: {
+      primary: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white",
+      secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
+      danger: "bg-gradient-to-r from-red-600 to-pink-600 text-white",
+    },
+  },
+  defaultVariants: {
+    color: "primary",
+  },
+});
 
-const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  className = '',
-  ...props
-}) => {
-  const baseStyles = 'px-4 py-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
-  const variants: Record<string, string> = {
-    primary:
-      'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 focus:ring-blue-500',
-    secondary:
-      'bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400',
-    danger:
-      'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-500 hover:to-pink-500 focus:ring-red-500'
-  }
-
-  return <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props} />
-}
-
-export default Button
+export default CustomButton;

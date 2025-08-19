@@ -10,10 +10,13 @@
     "test": "echo 'No tests available' && exit 0"
   },
   "dependencies": {
+    "@nextui-org/react": "^2.6.11",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.2",
+    "framer-motion": "^12.23.12",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.540.0",
     "mongodb": "^6.18.0",
     "mongoose": "^8.17.1",
     "next": "15.4.6",

@@ -4,15 +4,27 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
-import Button from '@/components/Button'
+import { 
+  Card, 
+  CardHeader, 
+  CardBody, 
+  CardFooter, 
+  Input, 
+  Button, 
+  Link 
+} from '@nextui-org/react'
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isVisible, setIsVisible] = useState(false);
   
   const { login } = useAuth()
   const router = useRouter()
+
+  const toggleVisibility = () => setIsVisible(!isVisible);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,67 +47,51 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              เข้าสู่ระบบ
-            </h2>
-            <p className="text-gray-600">
-              ระบบบันทึกข้อมูลขายพนักงาน
-            </p>
-          </div>
-
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อผู้ใช้
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="กรอกชื่อผู้ใช้"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  รหัสผ่าน
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="กรอกรหัสผ่าน"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3"
-            >
+      <Card className="max-w-md w-full p-6">
+        <CardHeader className="flex flex-col items-center pb-4">
+          <h1 className="text-3xl font-bold">เข้าสู่ระบบ</h1>
+          <p className="text-default-500">ระบบบันทึกข้อมูลขายพนักงาน</p>
+        </CardHeader>
+        <CardBody>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Input
+              isRequired
+              label="ชื่อผู้ใช้"
+              placeholder="กรอกชื่อผู้ใช้ของคุณ"
+              value={username}
+              onValueChange={setUsername}
+              isInvalid={!username && username.length > 0}
+              errorMessage="กรุณากรอกชื่อผู้ใช้"
+            />
+            <Input
+              isRequired
+              label="รหัสผ่าน"
+              placeholder="กรอกรหัสผ่านของคุณ"
+              value={password}
+              onValueChange={setPassword}
+              endContent={
+                <button className="focus:outline-none" type="button" onClick={toggleVisibility}>
+                  {isVisible ? (
+                    <EyeOff className="text-2xl text-default-400 pointer-events-none" />
+                  ) : (
+                    <Eye className="text-2xl text-default-400 pointer-events-none" />
+                  )}
+                </button>
+              }
+              type={isVisible ? "text" : "password"}
+              isInvalid={!password && password.length > 0}
+              errorMessage="กรุณากรอกรหัสผ่าน"
+            />
+            <Button type="submit" color="primary" isLoading={loading} fullWidth>
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </Button>
           </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>บัญชีทดสอบ:</p>
-            <p className="font-mono">admin / admin123</p>
-          </div>
-        </div>
-      </div>
+        </CardBody>
+        <CardFooter className="flex flex-col items-center pt-4">
+            <p className="text-sm text-default-500">บัญชีทดสอบ:</p>
+            <p className="font-mono text-sm">admin / admin123</p>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
