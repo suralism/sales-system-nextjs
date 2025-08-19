@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import Pagination from '@/components/Pagination'
 import toast from 'react-hot-toast';
 import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
 
@@ -26,6 +27,9 @@ const priceLevels = ['ราคาปกติ', 'ราคาตัวแทน
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
@@ -36,20 +40,17 @@ export default function ProductsPage() {
     category: '' as CategoryType | ''
   })
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/products', {
+      const response = await fetch(`/api/products?page=${page}&limit=${limit}`, {
         credentials: 'include'
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setProducts(data.products)
+        setTotal(data.pagination?.total || 0)
       } else {
         toast.error('Failed to fetch products.');
       }
@@ -59,7 +60,11 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
   const handleImportClick = () => {
     fileInputRef.current?.click()
@@ -379,6 +384,7 @@ export default function ProductsPage() {
               </table>
             </div>
           </div>
+          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
 
           {/* Modal */}
           {showModal && (

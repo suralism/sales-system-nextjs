@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import Pagination from '@/components/Pagination'
 import toast from 'react-hot-toast';
 
 interface Employee {
@@ -24,6 +25,9 @@ const priceLevels = ['ราคาปกติ', 'ราคาตัวแทน
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState({
@@ -37,19 +41,16 @@ export default function EmployeesPage() {
     priceLevel: 'ราคาปกติ' as Employee['priceLevel']
   })
 
-  useEffect(() => {
-    fetchEmployees()
-  }, [])
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
         credentials: 'include'
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setEmployees(data.users)
+        setTotal(data.pagination?.total || 0)
       } else {
         toast.error('Failed to fetch employees.');
       }
@@ -59,7 +60,11 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [fetchEmployees])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -256,6 +261,7 @@ export default function EmployeesPage() {
               </table>
             </div>
           </div>
+          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
 
           {/* Modal */}
           {showModal && (
