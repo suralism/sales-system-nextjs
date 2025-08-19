@@ -62,6 +62,7 @@ export default function SalesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedProductIndex, setSelectedProductIndex] = useState(-1)
   const [detailSale, setDetailSale] = useState<Sale | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -78,10 +79,14 @@ export default function SalesPage() {
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return []
-    return products.filter(p => 
+    return products.filter(p =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [searchTerm, products])
+
+  useEffect(() => {
+    setSelectedProductIndex(-1)
+  }, [searchTerm])
 
   useEffect(() => {
     if(user) {
@@ -208,6 +213,27 @@ export default function SalesPage() {
     setFormData({ ...formData, items: [...formData.items, newItem] })
     setSearchTerm('')
     searchInputRef.current?.focus()
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!filteredProducts.length) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedProductIndex(prev => {
+        const next = prev + 1
+        return next >= filteredProducts.length ? 0 : next
+      })
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedProductIndex(prev => {
+        if (prev === -1) return filteredProducts.length - 1
+        return prev === 0 ? filteredProducts.length - 1 : prev - 1
+      })
+    } else if (e.key === 'Enter' && selectedProductIndex >= 0) {
+      e.preventDefault()
+      addProductToForm(filteredProducts[selectedProductIndex])
+    }
   }
 
   const removeItem = (index: number) => {
@@ -458,17 +484,18 @@ export default function SalesPage() {
                         type="text"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
+                        onKeyDown={handleSearchKeyDown}
                         ref={searchInputRef}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา..."
                       />
                       {filteredProducts.length > 0 && (
                         <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
-                          {filteredProducts.map(p => (
-                            <div 
+                          {filteredProducts.map((p, index) => (
+                            <div
                               key={p._id}
                               onClick={() => addProductToForm(p)}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${index === selectedProductIndex ? 'bg-blue-100' : ''}`}
                             >
                               {p.name} ({formatCurrency(getPriceForEmployee(p, selectedEmployee))})
                             </div>
