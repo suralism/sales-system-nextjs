@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import Button from '@/components/Button'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function ProfilePage() {
@@ -215,13 +216,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex justify-end pt-6 border-t border-gray-200">
-                <button
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  isLoading={loading}
+                  className="px-6 py-2 text-sm"
                 >
                   {loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

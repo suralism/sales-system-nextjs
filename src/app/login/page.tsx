@@ -83,7 +83,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              disabled={loading}
+              isLoading={loading}
               className="w-full py-3"
             >
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
