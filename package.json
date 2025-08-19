@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3000} -H 0.0.0.0",
     "lint": "next lint",
-    "test": "echo 'No tests available' && exit 0"
+    "test": "echo 'No tests available' && exit 0",
+    "seed": "ts-node -P scripts/tsconfig.scripts.json scripts/seed.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -31,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
