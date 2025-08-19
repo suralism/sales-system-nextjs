@@ -218,9 +218,9 @@ export default function SettlementPage() {
 
           {showDetails && selectedSale && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-xl md:max-w-3xl shadow-lg rounded-md bg-white">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดสินค้า - {selectedSale.employeeName}</h3>
-                <div className="max-h-60 overflow-y-auto">
+                <div className="max-h-[60vh] overflow-y-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
@@ -259,10 +259,10 @@ export default function SettlementPage() {
 
           {showModal && selectedSale && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-xl md:max-w-3xl shadow-lg rounded-md bg-white">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">เคลียบิล - {selectedSale.employeeName}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="max-h-60 overflow-y-auto">
+                  <div className="max-h-[50vh] overflow-y-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
