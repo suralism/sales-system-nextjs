@@ -90,6 +90,9 @@ export default function SalesPage() {
   useEffect(() => {
     if(user) {
         fetchData()
+        if (user.role === 'employee') {
+          setFormData(prev => ({ ...prev, employeeId: user.id }))
+        }
     }
   }, [user])
 
@@ -170,7 +173,7 @@ export default function SalesPage() {
 
   const resetForm = () => {
     setFormData({
-      employeeId: '',
+      employeeId: user?.role === 'employee' ? user.id : '',
       type: 'เบิก',
       items: [],
       notes: ''
@@ -463,7 +466,7 @@ export default function SalesPage() {
                         required
                         value={formData.employeeId}
                         onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                        disabled={!!editingSaleId}
+                        disabled={!!editingSaleId || user?.role === 'employee'}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                       >
                         <option value="">เลือกพนักงาน</option>
