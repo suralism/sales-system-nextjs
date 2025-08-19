@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../lib/database'
-import Sale from '../../../../lib/models/Sale'
+import Sale, { ISale } from '../../../../lib/models/Sale'
 import Product from '../../../../lib/models/Product'
 import User from '../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../lib/auth'
@@ -155,7 +155,38 @@ export async function POST(request: NextRequest) {
 
         totalAmount += itemTotalPrice
       }
-      
+
+      let existingSale: ISale | null = null
+      if (type === 'เบิก') {
+        existingSale = await Sale.findOne({
+          employeeId: targetEmployeeId,
+          type: 'เบิก',
+          settled: false
+        }).session(session)
+      }
+
+      if (existingSale) {
+        existingSale.items.push(...processedItems)
+        existingSale.totalAmount += totalAmount
+        existingSale.pendingAmount = Math.max(
+          existingSale.totalAmount - (existingSale.paidAmount || 0),
+          0
+        )
+        if (notes?.trim()) {
+          existingSale.notes = existingSale.notes
+            ? `${existingSale.notes}\n${notes.trim()}`
+            : notes.trim()
+        }
+
+        await existingSale.save({ session })
+        await session.commitTransaction()
+
+        return NextResponse.json({
+          message: 'Sale updated successfully',
+          sale: existingSale
+        })
+      }
+
       const newSale = new Sale({
         employeeId: targetEmployeeId,
         employeeName: employee.name,
@@ -173,11 +204,11 @@ export async function POST(request: NextRequest) {
         awaitingTransfer: 0,
         settled: settled ?? false
       })
-      
+
       await newSale.save({ session })
-      
+
       await session.commitTransaction()
-      
+
       return NextResponse.json({
         message: 'Sale recorded successfully',
         sale: newSale
