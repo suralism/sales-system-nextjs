@@ -6,8 +6,9 @@ import { getUserFromRequest, hashPassword } from '../../../../../lib/auth'
 // GET - Get specific user
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -19,8 +20,6 @@ export async function GET(
     }
     
     await connectDB()
-    
-    const { id } = params
     
     // Check if user can access this data
     if (currentUser.role !== 'admin' && currentUser.userId !== id) {
@@ -55,8 +54,9 @@ export async function GET(
 // PUT - Update user
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -68,8 +68,6 @@ export async function PUT(
     }
     
     await connectDB()
-    
-    const { id } = params
     const updateData = await request.json()
     
     // Check if user can update this data
@@ -165,8 +163,9 @@ export async function PUT(
 // DELETE - Delete user (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     
@@ -178,8 +177,6 @@ export async function DELETE(
     }
     
     await connectDB()
-    
-    const { id } = params
     
     // Prevent admin from deleting themselves
     if (currentUser.userId === id) {

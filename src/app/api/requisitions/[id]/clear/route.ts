@@ -5,8 +5,9 @@ import { getUserFromRequest } from '../../../../../../lib/auth'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const currentUser = getUserFromRequest(request)
     if (!currentUser) {
@@ -14,7 +15,6 @@ export async function POST(
     }
 
     await connectDB()
-    const { id } = params
     const requisition = await Requisition.findOne({ _id: id, employeeId: currentUser._id, status: 'open' })
 
     if (!requisition) {
