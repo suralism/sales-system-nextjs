@@ -80,8 +80,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       awaitingTransfer
     } = await request.json()
 
-    const isAdmin = currentUser.role === 'admin'
-
     const sale = await Sale.findById(saleId)
     if (!sale) {
       return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
@@ -188,18 +186,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         sale.items = newProcessedItems
         sale.totalAmount = totalAmount
         sale.notes = notes?.trim()
-        if (isAdmin) {
-          if (typeof settled === 'boolean') sale.settled = settled
-          if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
-          if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
-          if (typeof customerPending === 'number') sale.customerPending = customerPending
-          if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
-          if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
-          if (typeof paidAmount === 'number') {
-            sale.paidAmount = paidAmount
-          } else {
-            sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
-          }
+        if (typeof settled === 'boolean') {
+          sale.settled = settled
+        }
+        if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
+        if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
+        if (typeof customerPending === 'number') sale.customerPending = customerPending
+        if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
+        if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
+        if (typeof paidAmount === 'number') {
+          sale.paidAmount = paidAmount
+        } else {
+          sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
         }
         sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
         await sale.save({ session })
@@ -215,27 +213,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     } else {
       sale.notes = notes?.trim() ?? sale.notes
-      if (isAdmin) {
-        if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
-        if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
-        if (typeof customerPending === 'number') sale.customerPending = customerPending
-        if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
-        if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
-        if (typeof paidAmount === 'number') {
-          sale.paidAmount = paidAmount
-        } else {
-          sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
-        }
-        if (paymentMethod) {
-          sale.paymentMethod = paymentMethod
-        }
-        if (typeof settled === 'boolean') {
-          sale.settled = settled
-        }
-        sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
+      if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
+      if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
+      if (typeof customerPending === 'number') sale.customerPending = customerPending
+      if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
+      if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
+      if (typeof paidAmount === 'number') {
+        sale.paidAmount = paidAmount
+      } else {
+        sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
       }
+      if (paymentMethod) {
+        sale.paymentMethod = paymentMethod
+      }
+      if (typeof settled === 'boolean') {
+        sale.settled = settled
+      }
+      sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
       await sale.save()
-      return NextResponse.json({ message: isAdmin ? 'Sale settlement updated successfully' : 'Sale updated successfully', sale })
+      return NextResponse.json({ message: 'Sale settlement updated successfully', sale })
     }
   } catch (error: unknown) {
     console.error('Update sale error:', error)
