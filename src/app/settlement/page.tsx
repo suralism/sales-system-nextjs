@@ -33,6 +33,7 @@ export default function SettlementPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [formData, setFormData] = useState({
     paidAmount: 0,
@@ -64,6 +65,11 @@ export default function SettlementPage() {
     setSelectedSale(sale)
     setFormData({ paidAmount: sale.totalAmount, paymentMethod: 'cash' })
     setShowModal(true)
+  }
+
+  const openDetails = (sale: Sale) => {
+    setSelectedSale(sale)
+    setShowDetails(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,10 +155,16 @@ export default function SettlementPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(sale.totalAmount)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-4">
+                        <button
+                          onClick={() => openDetails(sale)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          รายละเอียด
+                        </button>
                         <button
                           onClick={() => openSettle(sale)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-green-600 hover:text-green-900"
                         >
                           เคลียบิล
                         </button>
@@ -161,8 +173,49 @@ export default function SettlementPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
           </div>
+          </div>
+
+          {showDetails && selectedSale && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดสินค้า - {selectedSale.employeeName}</h3>
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {selectedSale.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="px-4 py-2">{item.productName}</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                          <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                          <td className="px-4 py-2 text-right">{item.return}</td>
+                          <td className="px-4 py-2 text-right">{item.defective}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <button
+                    type="button"
+                    onClick={() => { setShowDetails(false); setSelectedSale(null); }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  >
+                    ปิด
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showModal && selectedSale && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
