@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
 import Product from '../../../../../lib/models/Product'
+import { CATEGORY_TYPES } from '../../../../../lib/constants'
 import { getUserFromRequest } from '../../../../../lib/auth'
 
 const priceLevels = ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ']
@@ -102,12 +103,18 @@ export async function POST(request: NextRequest) {
         continue
       }
 
+      const category = record['category']?.trim()
+      if (!category || !CATEGORY_TYPES.includes(category)) {
+        skipped++
+        continue
+      }
+
       await Product.create({
         name,
         prices,
         stock,
         description: record['description']?.trim() || undefined,
-        category: record['category']?.trim() || undefined
+        category
       })
 
       imported++

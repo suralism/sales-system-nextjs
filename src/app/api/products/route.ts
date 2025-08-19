@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../lib/database'
 import Product from '../../../../lib/models/Product'
+import { CATEGORY_TYPES } from '../../../../lib/constants'
 import { getUserFromRequest } from '../../../../lib/auth'
 
 // GET - Get all products
@@ -45,13 +46,21 @@ export async function POST(request: NextRequest) {
     }
     
     await connectDB()
-    
+
     const { name, prices, stock, description, category } = await request.json()
-    
+
     // Validate required fields
-    if (!name || !prices || !Array.isArray(prices) || prices.length === 0 || stock === undefined) {
+    if (!name || !prices || !Array.isArray(prices) || prices.length === 0 || stock === undefined || !category) {
       return NextResponse.json(
-        { error: 'Name, prices, and stock are required' },
+        { error: 'Name, prices, stock, and category are required' },
+        { status: 400 }
+      )
+    }
+
+    const trimmedCategory = category.trim()
+    if (!CATEGORY_TYPES.includes(trimmedCategory)) {
+      return NextResponse.json(
+        { error: 'Invalid category' },
         { status: 400 }
       )
     }
@@ -83,7 +92,7 @@ export async function POST(request: NextRequest) {
       prices,
       stock: Number(stock),
       description: description?.trim(),
-      category: category?.trim()
+      category: trimmedCategory
     })
     
     await newProduct.save()

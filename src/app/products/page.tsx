@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import toast from 'react-hot-toast';
+import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
 
 interface Price {
   level: string;
@@ -17,7 +18,7 @@ interface Product {
   price?: number; // Keep optional for old data
   stock: number
   description?: string
-  category?: string
+  category?: CategoryType
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -34,10 +35,10 @@ export default function ProductsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    prices: priceLevels.map(level => ({ level, value: '' as string | number})),
+    prices: priceLevels.map(level => ({ level, value: '' as string | number })),
     stock: '',
     description: '',
-    category: ''
+    category: '' as CategoryType | ''
   })
 
   useEffect(() => {
@@ -199,7 +200,7 @@ export default function ProductsPage() {
       prices: priceLevels.map(level => ({ level, value: '' as string | number})),
       stock: '',
       description: '',
-      category: ''
+      category: '' as CategoryType | ''
     })
     setEditingProduct(null)
   }
@@ -471,14 +472,19 @@ export default function ProductsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        หมวดหมู่
+                        หมวดหมู่ *
                       </label>
-                      <input
-                        type="text"
+                      <select
+                        required
                         value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      >
+                        <option value="" disabled>เลือกหมวดหมู่</option>
+                        {CATEGORY_TYPES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
 import Product from '../../../../../lib/models/Product'
+import { CATEGORY_TYPES } from '../../../../../lib/constants'
 import { getUserFromRequest } from '../../../../../lib/auth'
 
 // GET - Get specific product
@@ -109,7 +110,14 @@ export async function PUT(
     }
     
     if (category !== undefined) {
-      updateData.category = category?.trim()
+      const trimmedCategory = category.trim()
+      if (!CATEGORY_TYPES.includes(trimmedCategory)) {
+        return NextResponse.json(
+          { error: 'Invalid category' },
+          { status: 400 }
+        )
+      }
+      updateData.category = trimmedCategory
     }
     
     updateData.updatedAt = new Date()
