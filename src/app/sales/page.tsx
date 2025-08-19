@@ -215,7 +215,7 @@ export default function SalesPage() {
   const updateItem = (index: number, field: keyof SaleItem, value: string) => {
     const newItems = [...formData.items]
     const item = newItems[index]
-    if (field === 'withdrawal' || field === 'return' || field === 'defective') {
+    if (field === 'withdrawal') {
         (item[field] as number) = parseInt(value, 10) || 0;
     }
     setFormData({ ...formData, items: newItems })
@@ -314,7 +314,7 @@ export default function SalesPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">บันทึกการเบิก</h1>
-              <p className="text-gray-600">บันทึกการเบิกและคืนสินค้า</p>
+                <p className="text-gray-600">บันทึกการเบิกสินค้า (คืน/เคลมใส่ตอนเคลียบิล)</p>
             </div>
             <button
               onClick={() => {
@@ -481,8 +481,7 @@ export default function SalesPage() {
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">สินค้า</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ราคา</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">เบิก</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">คืน</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ของเสีย</th>
+                            {/* คืนและของเสียจะใส่ตอนเคลียบิล */}
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"></th>
                           </tr>
                         </thead>
@@ -500,24 +499,7 @@ export default function SalesPage() {
                                   className="w-20 px-2 py-1 border border-gray-300 rounded-md"
                                 />
                               </td>
-                              <td className="px-4 py-2">
-                                <input 
-                                  type="number"
-                                  min="0"
-                                  value={item.return}
-                                  onChange={e => updateItem(index, 'return', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
-                                />
-                              </td>
-                              <td className="px-4 py-2">
-                                <input 
-                                  type="number"
-                                  min="0"
-                                  value={item.defective}
-                                  onChange={e => updateItem(index, 'defective', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
-                                />
-                              </td>
+                                {/* คืนและของเสียจะใส่ตอนเคลียบิล */}
                               <td className="px-4 py-2">
                                 <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700">ลบ</button>
                               </td>
