@@ -219,7 +219,7 @@ export default function ProfilePage() {
                 <Button
                   type="submit"
                   isLoading={loading}
-                  className="px-6 py-2 text-sm"
+                  className="px-6 py-2 text-sm transform hover:scale-105 active:scale-95"
                 >
                   {loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
                 </Button>
