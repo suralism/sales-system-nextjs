@@ -17,12 +17,31 @@ export async function GET(request: NextRequest) {
     }
     
     await connectDB()
-    
-    const products = await Product.find({ isActive: true })
-      .sort({ name: 1 })
-      .lean()
-    
-    return NextResponse.json({ products })
+
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '10', 10)
+    const skip = (page - 1) * limit
+
+    const query = { isActive: true }
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(query)
+    ])
+
+    return NextResponse.json({
+      products,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    })
     
   } catch (error) {
     console.error('Get products error:', error)

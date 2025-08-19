@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
@@ -39,6 +40,9 @@ export default function SettlementPage() {
   const { user } = useAuth()
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
@@ -46,18 +50,13 @@ export default function SettlementPage() {
   const [deliveredAmount, setDeliveredAmount] = useState(0)
   const [categorySummary, setCategorySummary] = useState({ main: 0, optional: 0 })
 
-  useEffect(() => {
-    if (user) {
-      fetchSales()
-    }
-  }, [user])
-
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     try {
-      const res = await fetch('/api/sales', { credentials: 'include' })
+      const res = await fetch(`/api/sales?settled=false&page=${page}&limit=${limit}`, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
         setSales(data.sales)
+        setTotal(data.pagination?.total || 0)
       }
     } catch (error) {
       console.error('Failed to fetch sales:', error)
@@ -65,7 +64,13 @@ export default function SettlementPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
+
+  useEffect(() => {
+    if (user) {
+      fetchSales()
+    }
+  }, [user, fetchSales])
 
   const fetchItemCategories = async (items: SaleItem[]) => {
     return Promise.all(
@@ -181,7 +186,7 @@ export default function SettlementPage() {
     )
   }
 
-  const unsettledSales = sales.filter(s => !s.settled)
+  const unsettledSales = sales
   const totalAmount = itemsForm.reduce(
     (sum, item) => sum + item.pricePerUnit * (item.withdrawal - item.return - item.defective),
     0
@@ -240,6 +245,7 @@ export default function SettlementPage() {
               </table>
           </div>
           </div>
+          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
 
           {showDetails && selectedSale && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">

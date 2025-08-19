@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
-    
+
     const query: Record<string, unknown> = {}
     
     if (currentUser.role === 'employee') {
@@ -35,12 +35,16 @@ export async function GET(request: NextRequest) {
     // Add date filter if provided
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
+    const settled = searchParams.get('settled')
     
     if (startDate || endDate) {
       query.saleDate = {}
       if (startDate) query.saleDate.$gte = new Date(startDate)
       if (endDate) query.saleDate.$lte = new Date(endDate)
     }
+
+    if (settled === 'true') query.settled = true
+    if (settled === 'false') query.settled = false
     
     const sales = await Sale.find(query)
       .sort({ saleDate: -1 })

@@ -16,32 +16,51 @@ export async function GET(request: NextRequest) {
     }
     
     await connectDB()
-    
-    let users
-    
+
     if (currentUser.role === 'admin') {
-      // Admin can see all users
-      users = await User.find({ isActive: true })
-        .select('-password')
-        .sort({ createdAt: -1 })
-        .lean()
+      const { searchParams } = new URL(request.url)
+      const page = parseInt(searchParams.get('page') || '1', 10)
+      const limit = parseInt(searchParams.get('limit') || '10', 10)
+      const skip = (page - 1) * limit
+
+      const query = { isActive: true }
+      const [users, total] = await Promise.all([
+        User.find(query)
+          .select('-password')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        User.countDocuments(query)
+      ])
+
+      return NextResponse.json({
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      })
     } else {
       // Employee can only see their own info
-      users = await User.findById(currentUser.userId)
+      const user = await User.findById(currentUser.userId)
         .select('-password')
         .lean()
-      
-      if (!users) {
+
+      if (!user) {
         return NextResponse.json(
           { error: 'User not found' },
           { status: 404 }
         )
       }
-      
-      users = [users] // Make it an array for consistency
+
+      return NextResponse.json({
+        users: [user],
+        pagination: { page: 1, limit: 1, total: 1, pages: 1 }
+      })
     }
-    
-    return NextResponse.json({ users })
     
   } catch (error) {
     console.error('Get users error:', error)

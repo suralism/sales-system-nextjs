@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast';
 
@@ -58,6 +59,9 @@ export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -87,19 +91,10 @@ export default function SalesPage() {
     setSelectedProductIndex(-1)
   }, [searchTerm])
 
-  useEffect(() => {
-    if(user) {
-        fetchData()
-        if (user.role === 'employee') {
-          setFormData(prev => ({ ...prev, employeeId: user.id }))
-        }
-    }
-  }, [user])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
-        fetch('/api/sales', { credentials: 'include' }),
+        fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include' }),
         fetch('/api/products', { credentials: 'include' }),
         fetch('/api/users', { credentials: 'include' })
       ])
@@ -107,6 +102,7 @@ export default function SalesPage() {
       if (salesRes.ok) {
         const salesData = await salesRes.json()
         setSales(salesData.sales)
+        setTotal(salesData.pagination?.total || 0)
       }
 
       if (productsRes.ok) {
@@ -124,7 +120,16 @@ export default function SalesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
+
+  useEffect(() => {
+    if(user) {
+        fetchData()
+        if (user.role === 'employee') {
+          setFormData(prev => ({ ...prev, employeeId: user.id }))
+        }
+    }
+  }, [user, fetchData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -449,6 +454,7 @@ export default function SalesPage() {
               </table>
             </div>
           </div>
+          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
 
           {/* Modal */}
           {showModal && (
