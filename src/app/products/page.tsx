@@ -17,7 +17,6 @@ interface Product {
   prices: Price[];
   price?: number; // Keep optional for old data
   category?: CategoryType
-  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -286,7 +285,7 @@ export default function ProductsPage() {
                       ราคา
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สถานะ
+                      หมวดหมู่
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       การจัดการ
@@ -321,11 +320,15 @@ export default function ProductsPage() {
                           ))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {needsUpdate && (
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
-                              รออัปเดต
-                            </span>
-                          )}
+                          <select
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          >
+                            {CATEGORY_TYPES.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
@@ -353,11 +356,7 @@ export default function ProductsPage() {
                           {formatCurrency(getNormalPrice(product))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {needsUpdate && (
-                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
-                                  รออัปเดต
-                              </span>
-                          )}
+                          {product.category || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
