@@ -167,6 +167,11 @@ SaleSchema.index({ employeeId: 1 })
 SaleSchema.index({ saleDate: -1 })
 SaleSchema.index({ type: 1 })
 SaleSchema.index({ employeeId: 1, saleDate: -1 })
+// Ensure only one open withdrawal bill per employee
+SaleSchema.index(
+  { employeeId: 1, type: 1, settled: 1 },
+  { unique: true, partialFilterExpression: { type: 'เบิก', settled: false } }
+)
 
 // Pre-save middleware to calculate total amount
 SaleSchema.pre('save', function(next) {
