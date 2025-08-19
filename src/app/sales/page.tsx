@@ -151,7 +151,7 @@ export default function SalesPage() {
         await fetchData()
         setShowModal(false)
         resetForm()
-        toast.success(editingSaleId ? 'อัปเดตการขายสำเร็จ' : 'บันทึกการขายสำเร็จ')
+        toast.success(editingSaleId ? 'อัปเดตการเบิกสำเร็จ' : 'บันทึกการเบิกสำเร็จ')
       } else {
         const error = await response.json()
         toast.error(error.error || 'เกิดข้อผิดพลาด')
@@ -313,7 +313,7 @@ export default function SalesPage() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">บันทึกการขาย</h1>
+              <h1 className="text-2xl font-bold text-gray-900">บันทึกการเบิก</h1>
               <p className="text-gray-600">บันทึกการเบิกและคืนสินค้า</p>
             </div>
             <button
@@ -323,14 +323,14 @@ export default function SalesPage() {
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
-              บันทึกการขายใหม่
+              บันทึกการเบิกใหม่
             </button>
           </div>
 
           {/* Sales History */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">ประวัติการขาย</h3>
+              <h3 className="text-lg font-medium text-gray-900">ประวัติการเบิก</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -424,7 +424,7 @@ export default function SalesPage() {
               <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
                 <div className="mt-3">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    {editingSaleId ? 'แก้ไขการขาย' : 'บันทึกการขายใหม่'}
+                    {editingSaleId ? 'แก้ไขการเบิก' : 'บันทึกการเบิกใหม่'}
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -560,7 +560,7 @@ export default function SalesPage() {
                         type="submit"
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                       >
-                        {editingSaleId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการขาย'}
+                        {editingSaleId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการเบิก'}
                       </button>
                     </div>
                   </form>
