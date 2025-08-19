@@ -62,6 +62,7 @@ export default function SalesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [detailSale, setDetailSale] = useState<Sale | null>(null)
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -374,14 +375,13 @@ export default function SalesPage() {
                           {sale.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="space-y-1">
-                          {sale.items.map((item, index) => (
-                            <div key={index}>
-                              {item.productName} - เบิก {item.withdrawal}, คืน {item.return}, เสีย {item.defective}
-                            </div>
-                          ))}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-blue-600">
+                        <button
+                          onClick={() => setDetailSale(sale)}
+                          className="hover:underline"
+                        >
+                          รายละเอียด
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(sale.totalAmount)}
@@ -546,6 +546,28 @@ export default function SalesPage() {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            </div>
+          )}
+          {detailSale && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดการเบิก</h3>
+                <div className="space-y-1 mb-4">
+                  {detailSale.items.map((item, index) => (
+                    <div key={index} className="text-sm text-gray-700">
+                      {item.productName} - เบิก {item.withdrawal}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-right">
+                  <button
+                    onClick={() => setDetailSale(null)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                  >
+                    ปิด
+                  </button>
                 </div>
               </div>
             </div>
