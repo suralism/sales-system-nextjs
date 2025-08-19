@@ -88,27 +88,36 @@ export default function SalesPage() {
   })
 
   const selectedEmployee = useMemo(() => {
+    if (user?.role === 'employee') {
+      return user ? { _id: user.id, name: user.name, priceLevel: user.priceLevel } : undefined;
+    }
     return employees.find(e => e._id === formData.employeeId);
-  }, [formData.employeeId, employees]);
+  }, [formData.employeeId, employees, user]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [salesRes, productsRes, employeesRes] = await Promise.all([
+      const requests: Promise<Response | undefined>[] = [
         fetch('/api/sales', { credentials: 'include' }),
-        fetch('/api/products', { credentials: 'include' }),
-        fetch('/api/users', { credentials: 'include' })
-      ]);
-      if (salesRes.ok) setSales((await salesRes.json()).sales);
-      if (productsRes.ok) setProducts((await productsRes.json()).products);
-      if (employeesRes.ok) setEmployees((await employeesRes.json()).users);
+        fetch('/api/products', { credentials: 'include' })
+      ];
+      if (user?.role === 'admin') {
+        requests.push(fetch('/api/users', { credentials: 'include' }));
+      }
+
+      const [salesRes, productsRes, employeesRes] = await Promise.all(requests);
+      if (salesRes && salesRes.ok) setSales((await salesRes.json()).sales);
+      if (productsRes && productsRes.ok) setProducts((await productsRes.json()).products);
+      if (user?.role === 'admin' && employeesRes && employeesRes.ok) {
+        setEmployees((await employeesRes.json()).users);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error)
       toast.error('Failed to fetch data');
     } finally {
       setLoading(false)
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if(user) fetchData();
@@ -140,15 +149,15 @@ export default function SalesPage() {
     }
   }
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setEditingSale(null);
     setFormData({
-      employeeId: '',
+      employeeId: user?.role === 'employee' ? user.id : '',
       type: 'เบิก',
       items: [],
       notes: ''
     });
-  }
+  }, [user])
 
   const addProductToForm = (productId: string) => {
     const product = products.find(p => p._id === productId);
@@ -322,20 +331,28 @@ export default function SalesPage() {
                   </ModalHeader>
                   <ModalBody>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Select
-                        isRequired
-                        label="พนักงาน"
-                        placeholder="เลือกพนักงาน"
-                        selectedKeys={formData.employeeId ? [formData.employeeId] : []}
-                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                        isDisabled={!!editingSale}
-                      >
-                        {employees.map((employee) => (
-                          <SelectItem key={employee._id} value={employee._id}>
-                            {employee.name}
-                          </SelectItem>
-                        ))}
-                      </Select>
+                      {user?.role === 'admin' ? (
+                        <Select
+                          isRequired
+                          label="พนักงาน"
+                          placeholder="เลือกพนักงาน"
+                          selectedKeys={formData.employeeId ? [formData.employeeId] : []}
+                          onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                          isDisabled={!!editingSale}
+                        >
+                          {employees.map((employee) => (
+                            <SelectItem key={employee._id} value={employee._id}>
+                              {employee.name}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      ) : (
+                        <Input
+                          isReadOnly
+                          label="พนักงาน"
+                          value={user?.name || ''}
+                        />
+                      )}
                       <Select
                         isRequired
                         label="ประเภท"
