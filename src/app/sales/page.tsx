@@ -80,12 +80,12 @@ export default function SalesPage() {
   const {isOpen, onOpen, onOpenChange, onClose} = useDisclosure();
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
 
-  const [formData, setFormData] = useState<Omit<Sale, '_id' | 'saleDate' | 'employeeName' | 'totalAmount' | 'settled'> & { employeeId: string }>({
+  const [formData, setFormData] = useState<Omit<Sale, '_id' | 'saleDate' | 'employeeName' | 'totalAmount' | 'settled'> & { employeeId: string }>(() => ({
     employeeId: '',
     type: 'เบิก',
     items: [],
     notes: ''
-  })
+  }))
 
   const selectedEmployee = useMemo(() => {
     return employees.find(e => e._id === formData.employeeId);
@@ -113,6 +113,12 @@ export default function SalesPage() {
   useEffect(() => {
     if(user) fetchData();
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (user?.role === 'employee') {
+      setFormData(prev => ({ ...prev, employeeId: user.id }));
+    }
+  }, [user]);
 
   const handleSubmit = async () => {
     try {
@@ -143,7 +149,7 @@ export default function SalesPage() {
   const resetForm = () => {
     setEditingSale(null);
     setFormData({
-      employeeId: '',
+      employeeId: user?.role === 'employee' ? user.id : '',
       type: 'เบิก',
       items: [],
       notes: ''
@@ -328,7 +334,7 @@ export default function SalesPage() {
                         placeholder="เลือกพนักงาน"
                         selectedKeys={formData.employeeId ? [formData.employeeId] : []}
                         onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                        isDisabled={!!editingSale}
+                        isDisabled={!!editingSale || user?.role !== 'admin'}
                       >
                         {employees.map((employee) => (
                           <SelectItem key={employee._id} value={employee._id}>

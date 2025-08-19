@@ -128,7 +128,7 @@ export default function SettlementPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedRoute requiredRole="admin">
         <Layout>
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -144,7 +144,7 @@ export default function SettlementPage() {
     : 0
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="admin">
       <Layout>
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-gray-900">เคลียบิล</h1>
