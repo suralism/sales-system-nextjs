@@ -21,8 +21,8 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'แดชบอร์ด', href: '/dashboard', icon: '📊' },
-    { name: 'บันทึกการขาย', href: '/sales', icon: '💰' },
-    { name: 'เคลียบิล', href: '/settlement', icon: '🧾' },
+    { name: 'บันทึกการเบิก', href: '/sales', icon: '💰' },
+    { name: 'เคลียบิล', href: '/settlement', icon: '🧾', adminOnly: true },
     { name: 'จัดการสินค้า', href: '/products', icon: '📦', adminOnly: true },
     { name: 'จัดการพนักงาน', href: '/employees', icon: '👥', adminOnly: true },
     { name: 'ข้อมูลส่วนตัว', href: '/profile', icon: '👤' },
