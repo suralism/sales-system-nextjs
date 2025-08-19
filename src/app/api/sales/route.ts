@@ -166,12 +166,34 @@ export async function POST(request: NextRequest) {
       }
 
       if (existingSale) {
-        existingSale.items.push(...processedItems)
-        existingSale.totalAmount += totalAmount
+        processedItems.forEach(newItem => {
+          const existingItem = existingSale!.items.find(
+            item => item.productId.toString() === newItem.productId.toString()
+          )
+
+          if (existingItem) {
+            existingItem.withdrawal += newItem.withdrawal
+            existingItem.return += newItem.return
+            existingItem.defective += newItem.defective
+            existingItem.totalPrice = existingItem.pricePerUnit * (
+              existingItem.withdrawal -
+              existingItem.return -
+              existingItem.defective
+            )
+          } else {
+            existingSale!.items.push(newItem)
+          }
+        })
+
+        existingSale.totalAmount = existingSale.items.reduce(
+          (sum, item) => sum + item.totalPrice,
+          0
+        )
         existingSale.pendingAmount = Math.max(
           existingSale.totalAmount - (existingSale.paidAmount || 0),
           0
         )
+
         if (notes?.trim()) {
           existingSale.notes = existingSale.notes
             ? `${existingSale.notes}\n${notes.trim()}`
