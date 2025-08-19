@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
-import { useAuth } from '@/contexts/AuthContext'
 
 interface RecentSale {
   employeeName: string
@@ -11,13 +10,6 @@ interface RecentSale {
   saleDate: string
   totalAmount: number
   items: unknown[]
-}
-
-interface LowStockProduct {
-  name: string
-  category: string
-  stock: number
-  price: number
 }
 
 interface DashboardData {
@@ -30,13 +22,11 @@ interface DashboardData {
     totalSalesCount: number
   }
   recentSales: RecentSale[]
-  lowStockProducts?: LowStockProduct[]
 }
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
 
   useEffect(() => {
     fetchDashboardData()
@@ -188,38 +178,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Low Stock Products (Admin only) */}
-            {user?.role === 'admin' && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">สินค้าใกล้หมด</h3>
-                </div>
-                <div className="p-6">
-                  {data?.lowStockProducts && data.lowStockProducts.length > 0 ? (
-                    <div className="space-y-4">
-                      {data.lowStockProducts.map((product, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-sm text-gray-500">{product.category}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-red-600">
-                              เหลือ {product.stock} ชิ้น
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {formatCurrency(product.price)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-4">สินค้าทุกรายการมีสต็อกเพียงพอ</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </Layout>

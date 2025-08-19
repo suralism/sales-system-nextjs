@@ -85,18 +85,6 @@ export async function GET(request: NextRequest) {
         .lean()
     ])
     
-    // Get low stock products (admin only)
-    let lowStockProducts = []
-    if (currentUser.role === 'admin') {
-      lowStockProducts = await Product.find({
-        isActive: true,
-        stock: { $lte: 10 } // Products with stock <= 10
-      })
-      .sort({ stock: 1 })
-      .limit(5)
-      .lean()
-    }
-    
     // Format the response
     const todayStats = todaySales[0] || { totalAmount: 0, count: 0 }
     const totalStats = totalSales[0] || { totalAmount: 0, count: 0 }
@@ -110,8 +98,7 @@ export async function GET(request: NextRequest) {
         totalSalesAmount: totalStats.totalAmount,
         totalSalesCount: totalStats.count
       },
-      recentSales,
-      ...(currentUser.role === 'admin' && { lowStockProducts })
+      recentSales
     }
     
     return NextResponse.json(dashboardData)

@@ -140,15 +140,9 @@ export async function POST(request: NextRequest) {
         }
         const price = priceInfo.value;
 
-        const netStockChange = (returnQty || 0) - (withdrawal || 0)
+        const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
+        const itemTotalPrice = price * netQuantity
 
-        if (product.stock + netStockChange < 0) {
-          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${withdrawal}`)
-        }
-        
-        const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0);
-        const itemTotalPrice = price * netQuantity;
-        
         processedItems.push({
           productId: product._id,
           productName: product.name,
@@ -158,16 +152,8 @@ export async function POST(request: NextRequest) {
           defective: defective || 0,
           totalPrice: itemTotalPrice
         })
-        
+
         totalAmount += itemTotalPrice
-        
-        if (netStockChange !== 0) {
-            await Product.findByIdAndUpdate(
-              productId,
-              { $inc: { stock: netStockChange } },
-              { session }
-            )
-        }
       }
       
       const newSale = new Sale({
@@ -207,8 +193,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create sale error:', error)
     
-    if (error.message.includes('Insufficient stock') || 
-        error.message.includes('Product not found') ||
+    if (error.message.includes('Product not found') ||
         error.message.includes('Invalid item data')) {
       return NextResponse.json(
         { error: error.message },
