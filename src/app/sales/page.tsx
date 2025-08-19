@@ -95,7 +95,8 @@ export default function SalesPage() {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
         fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include' }),
-        fetch('/api/products', { credentials: 'include' }),
+        // Fetch all products to ensure search can find every item
+        fetch('/api/products?limit=1000', { credentials: 'include' }),
         fetch('/api/users', { credentials: 'include' })
       ])
 
