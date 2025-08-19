@@ -91,6 +91,34 @@ export default function SalesPage() {
     setSelectedProductIndex(-1)
   }, [searchTerm])
 
+  const detailSummary = useMemo(() => {
+    if (!detailSale) return null
+    const totalWithdrawn = detailSale.items.reduce((sum, item) => sum + item.withdrawal, 0)
+    const totalAmount = detailSale.items.reduce(
+      (sum, item) => sum + item.pricePerUnit * item.withdrawal,
+      0
+    )
+    const totalReturn = detailSale.items.reduce((sum, item) => sum + item.return, 0)
+    const totalDefective = detailSale.items.reduce((sum, item) => sum + item.defective, 0)
+    const totalSold = detailSale.items.reduce(
+      (sum, item) => sum + item.withdrawal - item.return - item.defective,
+      0
+    )
+    const totalSoldAmount = detailSale.items.reduce(
+      (sum, item) =>
+        sum + (item.withdrawal - item.return - item.defective) * item.pricePerUnit,
+      0
+    )
+    return {
+      totalWithdrawn,
+      totalAmount,
+      totalReturn,
+      totalDefective,
+      totalSold,
+      totalSoldAmount
+    }
+  }, [detailSale])
+
   const fetchData = useCallback(async () => {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
@@ -591,18 +619,85 @@ export default function SalesPage() {
               </div>
             </div>
           )}
-          {detailSale && (
+          {detailSale && detailSummary && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดการเบิก</h3>
-                <div className="space-y-1 mb-4">
-                  {detailSale.items.map((item, index) => (
-                    <div key={index} className="text-sm text-gray-700">
-                      {item.productName} - เบิก {item.withdrawal}
-                    </div>
-                  ))}
+              <div className="relative top-10 mx-auto p-5 border w-full max-w-xl md:max-w-3xl shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดการเบิก - {detailSale.employeeName}</h3>
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {detailSale.settled ? (
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {detailSale.items.map((item, index) => {
+                          const sold = item.withdrawal - item.return - item.defective
+                          return (
+                            <tr key={index}>
+                              <td className="px-4 py-2">{item.productName}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                              <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                              <td className="px-4 py-2 text-right">{item.return}</td>
+                              <td className="px-4 py-2 text-right">{item.defective}</td>
+                              <td className="px-4 py-2 text-right">{sold}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {detailSale.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-4 py-2">{item.productName}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                            <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(item.withdrawal * item.pricePerUnit)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
-                <div className="text-right">
+                <div className="mt-4 text-sm text-gray-700">
+                  {detailSale.settled ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span>ยอดขายรวม: {formatCurrency(detailSummary.totalSoldAmount)}</span>
+                        <span>ยอดนำส่ง: {formatCurrency((detailSale.cashAmount || 0) + (detailSale.transferAmount || 0))}</span>
+                      </div>
+                      <div className="flex justify-between mt-2">
+                        <span>ขายได้: {detailSummary.totalSold} ชิ้น</span>
+                        <span>คืน: {detailSummary.totalReturn} ชิ้น</span>
+                        <span>เสีย: {detailSummary.totalDefective} ชิ้น</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span>ยอดรวม: {formatCurrency(detailSummary.totalAmount)}</span>
+                      <span>จำนวนชิ้น: {detailSummary.totalWithdrawn}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end mt-4">
                   <button
                     onClick={() => setDetailSale(null)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
