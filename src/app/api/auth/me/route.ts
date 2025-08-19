@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     // Get fresh user data from database
-    const userData = await User.findById(user.userId)
+    const userData = await User.findOne({ _id: user.userId })
       .select('-password')
       .lean()
     
