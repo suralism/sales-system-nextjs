@@ -67,7 +67,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await connectDB()
 
     const saleId = params.id
-    const { items, notes, settled, paidAmount, paymentMethod } = await request.json()
+    const {
+      items,
+      notes,
+      settled,
+      paidAmount,
+      paymentMethod,
+      cashAmount,
+      transferAmount,
+      customerPending,
+      expenseAmount,
+      awaitingTransfer
+    } = await request.json()
 
     const sale = await Sale.findById(saleId)
     if (!sale) {
@@ -178,6 +189,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         if (typeof settled === 'boolean') {
           sale.settled = settled
         }
+        if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
+        if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
+        if (typeof customerPending === 'number') sale.customerPending = customerPending
+        if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
+        if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
+        if (typeof paidAmount === 'number') {
+          sale.paidAmount = paidAmount
+        } else {
+          sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
+        }
         sale.pendingAmount = Math.max(sale.totalAmount - sale.paidAmount, 0)
         await sale.save({ session })
 
@@ -192,8 +213,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     } else {
       sale.notes = notes?.trim() ?? sale.notes
+      if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
+      if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
+      if (typeof customerPending === 'number') sale.customerPending = customerPending
+      if (typeof expenseAmount === 'number') sale.expenseAmount = expenseAmount
+      if (typeof awaitingTransfer === 'number') sale.awaitingTransfer = awaitingTransfer
       if (typeof paidAmount === 'number') {
         sale.paidAmount = paidAmount
+      } else {
+        sale.paidAmount = (sale.cashAmount || 0) + (sale.transferAmount || 0)
       }
       if (paymentMethod) {
         sale.paymentMethod = paymentMethod

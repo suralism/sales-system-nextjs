@@ -180,6 +180,11 @@ export async function POST(request: NextRequest) {
         paidAmount: 0,
         paymentMethod: 'cash',
         pendingAmount: totalAmount,
+        cashAmount: 0,
+        transferAmount: 0,
+        customerPending: 0,
+        expenseAmount: 0,
+        awaitingTransfer: 0,
         settled: settled ?? false
       })
       

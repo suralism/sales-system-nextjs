@@ -45,6 +45,11 @@ interface Sale {
   paidAmount: number
   paymentMethod: string
   pendingAmount: number
+  cashAmount: number
+  transferAmount: number
+  customerPending: number
+  expenseAmount: number
+  awaitingTransfer: number
   settled: boolean
 }
 
