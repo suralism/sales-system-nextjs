@@ -25,6 +25,11 @@ interface Sale {
   paidAmount: number
   paymentMethod: string
   pendingAmount: number
+  cashAmount: number
+  transferAmount: number
+  customerPending: number
+  expenseAmount: number
+  awaitingTransfer: number
   settled: boolean
 }
 
@@ -35,8 +40,11 @@ export default function SettlementPage() {
   const [showModal, setShowModal] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [formData, setFormData] = useState({
-    paidAmount: 0,
-    paymentMethod: 'cash'
+    cashAmount: 0,
+    transferAmount: 0,
+    customerPending: 0,
+    expenseAmount: 0,
+    awaitingTransfer: 0
   })
 
   useEffect(() => {
@@ -62,7 +70,13 @@ export default function SettlementPage() {
 
   const openSettle = (sale: Sale) => {
     setSelectedSale(sale)
-    setFormData({ paidAmount: sale.totalAmount, paymentMethod: 'cash' })
+    setFormData({
+      cashAmount: sale.cashAmount || 0,
+      transferAmount: sale.transferAmount || 0,
+      customerPending: sale.customerPending || 0,
+      expenseAmount: sale.expenseAmount || 0,
+      awaitingTransfer: sale.awaitingTransfer || 0
+    })
     setShowModal(true)
   }
 
@@ -75,8 +89,12 @@ export default function SettlementPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          paidAmount: formData.paidAmount,
-          paymentMethod: formData.paymentMethod,
+          cashAmount: formData.cashAmount,
+          transferAmount: formData.transferAmount,
+          customerPending: formData.customerPending,
+          expenseAmount: formData.expenseAmount,
+          awaitingTransfer: formData.awaitingTransfer,
+          paidAmount: formData.cashAmount + formData.transferAmount,
           settled: true
         })
       })
@@ -115,7 +133,9 @@ export default function SettlementPage() {
   }
 
   const unsettledSales = sales.filter(s => !s.settled)
-  const remaining = selectedSale ? selectedSale.totalAmount - formData.paidAmount : 0
+  const remaining = selectedSale
+    ? selectedSale.totalAmount - (formData.cashAmount + formData.transferAmount)
+    : 0
 
   return (
     <ProtectedRoute>
@@ -173,26 +193,54 @@ export default function SettlementPage() {
                     <p className="text-sm text-gray-700">ยอดสุทธิ: {formatCurrency(selectedSale.totalAmount)}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">พนักงานชำระ</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">เงินสด</label>
                     <input
                       type="number"
                       min="0"
-                      value={formData.paidAmount}
-                      onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })}
+                      value={formData.cashAmount}
+                      onChange={e => setFormData({ ...formData, cashAmount: parseFloat(e.target.value) || 0 })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">วิธีการชำระ</label>
-                    <select
-                      value={formData.paymentMethod}
-                      onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">โอนเงิน</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.transferAmount}
+                      onChange={e => setFormData({ ...formData, transferAmount: parseFloat(e.target.value) || 0 })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    >
-                      <option value="cash">เงินสด</option>
-                      <option value="transfer">โอนเงิน</option>
-                      <option value="customer_pending">ลูกค้ารอโอน</option>
-                    </select>
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ลูกค้ายังไม่จ่าย</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.customerPending}
+                      onChange={e => setFormData({ ...formData, customerPending: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">หักค่าใช้จ่าย</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.expenseAmount}
+                      onChange={e => setFormData({ ...formData, expenseAmount: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">รอโอนเพิ่ม</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.awaitingTransfer}
+                      onChange={e => setFormData({ ...formData, awaitingTransfer: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
                   </div>
                   <div className="text-sm text-gray-700">
                     {remaining > 0 ? (

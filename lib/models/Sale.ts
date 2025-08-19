@@ -22,6 +22,11 @@ export interface ISale extends mongoose.Document {
   paidAmount: number
   paymentMethod: 'cash' | 'transfer' | 'customer_pending'
   pendingAmount: number
+  cashAmount: number
+  transferAmount: number
+  customerPending: number
+  expenseAmount: number
+  awaitingTransfer: number
   settled: boolean
   createdAt: Date
   updatedAt: Date
@@ -118,6 +123,31 @@ const SaleSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: [0, 'Pending amount cannot be negative']
+  },
+  cashAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Cash amount cannot be negative']
+  },
+  transferAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Transfer amount cannot be negative']
+  },
+  customerPending: {
+    type: Number,
+    default: 0,
+    min: [0, 'Customer pending cannot be negative']
+  },
+  expenseAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Expense amount cannot be negative']
+  },
+  awaitingTransfer: {
+    type: Number,
+    default: 0,
+    min: [0, 'Awaiting transfer cannot be negative']
   },
   notes: {
     type: String,
