@@ -188,11 +188,6 @@ export default function SalesPage() {
         return;
     }
 
-    if (formData.items.some(item => item.productId === product._id)) {
-      toast.error('This product is already in the list.')
-      return
-    }
-
     if (!product.prices || product.prices.length === 0) {
         toast.error('This product needs its price levels updated before it can be sold.');
         return;
@@ -204,15 +199,22 @@ export default function SalesPage() {
         return;
     }
 
-    const newItem: SaleItem = {
-      productId: product._id,
-      productName: product.name,
-      pricePerUnit: priceInfo.value,
-      withdrawal: 1,
-      return: 0,
-      defective: 0
+    const existingIndex = formData.items.findIndex(item => item.productId === product._id)
+    if (existingIndex >= 0) {
+      const updatedItems = [...formData.items]
+      updatedItems[existingIndex].withdrawal += 1
+      setFormData({ ...formData, items: updatedItems })
+    } else {
+      const newItem: SaleItem = {
+        productId: product._id,
+        productName: product.name,
+        pricePerUnit: priceInfo.value,
+        withdrawal: 1,
+        return: 0,
+        defective: 0
+      }
+      setFormData({ ...formData, items: [...formData.items, newItem] })
     }
-    setFormData({ ...formData, items: [...formData.items, newItem] })
     setSearchTerm('')
     searchInputRef.current?.focus()
   }
