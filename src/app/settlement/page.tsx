@@ -40,6 +40,7 @@ export default function SettlementPage() {
   const [showModal, setShowModal] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [itemsForm, setItemsForm] = useState<SaleItem[]>([])
   const [formData, setFormData] = useState({
     cashAmount: 0,
     transferAmount: 0,
@@ -78,12 +79,21 @@ export default function SettlementPage() {
       expenseAmount: sale.expenseAmount || 0,
       awaitingTransfer: sale.awaitingTransfer || 0
     })
+    setItemsForm(sale.items.map(item => ({ ...item })))
     setShowModal(true)
   }
 
   const openDetails = (sale: Sale) => {
     setSelectedSale(sale)
     setShowDetails(true)
+  }
+
+  const updateItem = (index: number, field: 'return' | 'defective', value: number) => {
+    setItemsForm(prev => {
+      const newItems = [...prev]
+      newItems[index] = { ...newItems[index], [field]: value }
+      return newItems
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,6 +105,12 @@ export default function SettlementPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          items: itemsForm.map(item => ({
+            productId: item.productId,
+            withdrawal: item.withdrawal,
+            return: item.return,
+            defective: item.defective
+          })),
           cashAmount: formData.cashAmount,
           transferAmount: formData.transferAmount,
           customerPending: formData.customerPending,
@@ -139,8 +155,12 @@ export default function SettlementPage() {
   }
 
   const unsettledSales = sales.filter(s => !s.settled)
+  const totalAmount = itemsForm.reduce(
+    (sum, item) => sum + item.pricePerUnit * (item.withdrawal - item.return - item.defective),
+    0
+  )
   const remaining = selectedSale
-    ? selectedSale.totalAmount - (formData.cashAmount + formData.transferAmount)
+    ? totalAmount - (formData.cashAmount + formData.transferAmount)
     : 0
 
   return (
@@ -242,8 +262,48 @@ export default function SettlementPage() {
               <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">เคลียบิล - {selectedSale.employeeName}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="max-h-60 overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {itemsForm.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-4 py-2">{item.productName}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                            <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                            <td className="px-4 py-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.return}
+                                onChange={e => updateItem(idx, 'return', parseInt(e.target.value) || 0)}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.defective}
+                                onChange={e => updateItem(idx, 'defective', parseInt(e.target.value) || 0)}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                   <div>
-                    <p className="text-sm text-gray-700">ยอดสุทธิ: {formatCurrency(selectedSale.totalAmount)}</p>
+                    <p className="text-sm text-gray-700">ยอดสุทธิ: {formatCurrency(totalAmount)}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">เงินสด</label>
