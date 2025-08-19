@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
+import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
 
 interface SaleItem {
   productId: string
@@ -13,6 +14,7 @@ interface SaleItem {
   withdrawal: number
   return: number
   defective: number
+  category?: CategoryType
 }
 
 interface Sale {
@@ -42,6 +44,7 @@ export default function SettlementPage() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [itemsForm, setItemsForm] = useState<SaleItem[]>([])
   const [deliveredAmount, setDeliveredAmount] = useState(0)
+  const [categorySummary, setCategorySummary] = useState({ main: 0, optional: 0 })
 
   useEffect(() => {
     if (user) {
@@ -64,15 +67,49 @@ export default function SettlementPage() {
     }
   }
 
-  const openSettle = (sale: Sale) => {
+  const fetchItemCategories = async (items: SaleItem[]) => {
+    return Promise.all(
+      items.map(async item => {
+        try {
+          const res = await fetch(`/api/products/${item.productId}`, { credentials: 'include' })
+          if (res.ok) {
+            const data = await res.json()
+            return { ...item, category: data.product.category as CategoryType }
+          }
+        } catch (err) {
+          console.error('Failed to fetch product category:', err)
+        }
+        return { ...item }
+      })
+    )
+  }
+
+  const updateCategorySummary = (items: SaleItem[]) => {
+    const summary = items.reduce(
+      (acc, item) => {
+        const sold = item.withdrawal - item.return - item.defective
+        if (item.category === CATEGORY_TYPES[0]) acc.main += sold
+        else if (item.category === CATEGORY_TYPES[1]) acc.optional += sold
+        return acc
+      },
+      { main: 0, optional: 0 }
+    )
+    setCategorySummary(summary)
+  }
+
+  const openSettle = async (sale: Sale) => {
     setSelectedSale(sale)
     setDeliveredAmount((sale.cashAmount || 0) + (sale.transferAmount || 0))
-    setItemsForm(sale.items.map(item => ({ ...item })))
+    const itemsWithCategory = await fetchItemCategories(sale.items)
+    setItemsForm(itemsWithCategory)
+    updateCategorySummary(itemsWithCategory)
     setShowModal(true)
   }
 
-  const openDetails = (sale: Sale) => {
-    setSelectedSale(sale)
+  const openDetails = async (sale: Sale) => {
+    const itemsWithCategory = await fetchItemCategories(sale.items)
+    setSelectedSale({ ...sale, items: itemsWithCategory })
+    updateCategorySummary(itemsWithCategory)
     setShowDetails(true)
   }
 
@@ -80,6 +117,7 @@ export default function SettlementPage() {
     setItemsForm(prev => {
       const newItems = [...prev]
       newItems[index] = { ...newItems[index], [field]: value }
+      updateCategorySummary(newItems)
       return newItems
     })
   }
@@ -112,6 +150,7 @@ export default function SettlementPage() {
         toast.success('เคลียบิลสำเร็จ')
         setShowModal(false)
         setSelectedSale(null)
+        setCategorySummary({ main: 0, optional: 0 })
         fetchSales()
       } else {
         const err = await response.json()
@@ -215,25 +254,36 @@ export default function SettlementPage() {
                         <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
                         <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
                         <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedSale.items.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="px-4 py-2">{item.productName}</td>
-                          <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                          <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                          <td className="px-4 py-2 text-right">{item.return}</td>
-                          <td className="px-4 py-2 text-right">{item.defective}</td>
-                        </tr>
-                      ))}
+                      {selectedSale.items.map((item, idx) => {
+                        const sold = item.withdrawal - item.return - item.defective
+                        return (
+                          <tr key={idx}>
+                            <td className="px-4 py-2">{item.productName}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                            <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                            <td className="px-4 py-2 text-right">{item.return}</td>
+                            <td className="px-4 py-2 text-right">{item.defective}</td>
+                            <td className="px-4 py-2 text-right">{sold}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
+                </div>
+                <div className="flex justify-between mt-4 text-sm text-gray-700">
+                  <span>สินค้าหลัก: {categorySummary.main} ชิ้น</span>
+                  <span>สินค้าทางเลือก: {categorySummary.optional} ชิ้น</span>
                 </div>
                 <div className="flex justify-end mt-4">
                   <button
                     type="button"
-                    onClick={() => { setShowDetails(false); setSelectedSale(null); }}
+                      onClick={() => { setShowDetails(false); setSelectedSale(null); setCategorySummary({ main: 0, optional: 0 }) }}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
                   >
                     ปิด
@@ -257,36 +307,47 @@ export default function SettlementPage() {
                           <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {itemsForm.map((item, idx) => (
-                          <tr key={idx}>
-                            <td className="px-4 py-2">{item.productName}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                            <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                            <td className="px-4 py-2 text-right">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.return}
-                                onChange={e => updateItem(idx, 'return', parseInt(e.target.value) || 0)}
-                                className="w-20 px-2 py-1 border border-gray-300 rounded"
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.defective}
-                                onChange={e => updateItem(idx, 'defective', parseInt(e.target.value) || 0)}
-                                className="w-20 px-2 py-1 border border-gray-300 rounded"
-                              />
-                            </td>
-                          </tr>
-                        ))}
+                        {itemsForm.map((item, idx) => {
+                          const sold = item.withdrawal - item.return - item.defective
+                          return (
+                            <tr key={idx}>
+                              <td className="px-4 py-2">{item.productName}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
+                              <td className="px-4 py-2 text-right">{item.withdrawal}</td>
+                              <td className="px-4 py-2 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.return}
+                                  onChange={e => updateItem(idx, 'return', parseInt(e.target.value) || 0)}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.defective}
+                                  onChange={e => updateItem(idx, 'defective', parseInt(e.target.value) || 0)}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-right">{sold}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-700">
+                    <span>สินค้าหลัก: {categorySummary.main} ชิ้น</span>
+                    <span>สินค้าทางเลือก: {categorySummary.optional} ชิ้น</span>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-gray-900">ยอดสุทธิ: {formatCurrency(totalAmount)}</p>
@@ -311,7 +372,7 @@ export default function SettlementPage() {
                   <div className="flex justify-end space-x-3">
                     <button
                       type="button"
-                      onClick={() => setShowModal(false)}
+                      onClick={() => { setShowModal(false); setCategorySummary({ main: 0, optional: 0 }) }}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
                     >
                       ยกเลิก
