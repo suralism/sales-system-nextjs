@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     await connectDB()
     
     const { employeeId, type, items, notes, settled } = await request.json()
-    const isAdmin = currentUser.role === 'admin'
+    
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: 'Sale items are required' },
@@ -99,14 +99,13 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const targetEmployeeId = isAdmin ? employeeId : currentUser.userId
-
-    if (!targetEmployeeId) {
+    if (!employeeId) {
       return NextResponse.json(
         { error: 'Employee ID is required' },
         { status: 400 }
       )
     }
+    const targetEmployeeId = employeeId
     
     const employee = await User.findById(targetEmployeeId)
     if (!employee || !employee.isActive) {
@@ -186,7 +185,7 @@ export async function POST(request: NextRequest) {
         customerPending: 0,
         expenseAmount: 0,
         awaitingTransfer: 0,
-        settled: isAdmin ? !!settled : false
+        settled: settled ?? false
       })
       
       await newSale.save({ session })

@@ -4,23 +4,8 @@ import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  Card, 
-  CardBody, 
-  CardHeader, 
-  Spinner, 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
-  TableCell, 
-  Chip 
-} from '@nextui-org/react'
-import { DollarSign, Package, Users, ShoppingCart } from 'lucide-react';
 
 interface RecentSale {
-  _id: string;
   employeeName: string
   type: string
   saleDate: string
@@ -29,7 +14,6 @@ interface RecentSale {
 }
 
 interface LowStockProduct {
-  _id: string;
   name: string
   category: string
   stock: number
@@ -67,8 +51,6 @@ export default function DashboardPage() {
       if (response.ok) {
         const dashboardData = await response.json()
         setData(dashboardData)
-      } else {
-        // Handle error
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
@@ -94,19 +76,12 @@ export default function DashboardPage() {
     })
   }
 
-  const summaryCards = [
-    { title: 'สินค้าทั้งหมด', value: data?.summary.totalProducts || 0, icon: <Package className="text-blue-500" /> },
-    { title: 'พนักงาน', value: data?.summary.totalEmployees || 0, icon: <Users className="text-green-500" /> },
-    { title: 'ยอดขายวันนี้', value: formatCurrency(data?.summary.todaySalesAmount || 0), subValue: `${data?.summary.todaySalesCount || 0} รายการ`, icon: <DollarSign className="text-yellow-500" /> },
-    { title: 'ยอดขายรวม', value: formatCurrency(data?.summary.totalSalesAmount || 0), subValue: `${data?.summary.totalSalesCount || 0} รายการ`, icon: <ShoppingCart className="text-purple-500" /> },
-  ];
-
   if (loading) {
     return (
       <ProtectedRoute>
         <Layout>
           <div className="flex items-center justify-center h-64">
-            <Spinner size="lg" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </Layout>
       </ProtectedRoute>
@@ -117,84 +92,133 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <Layout>
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>
-          
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>
+            <p className="text-gray-600">ภาพรวมของระบบขายสินค้า</p>
+          </div>
+
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {summaryCards.map((card, index) => (
-              <Card key={index} shadow="sm">
-                <CardBody className="flex flex-row items-center gap-4 p-6">
-                  <div className="bg-default-100 p-3 rounded-full">
-                    {card.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-default-600">{card.title}</p>
-                    <p className="text-2xl font-semibold text-default-900">{card.value}</p>
-                    {card.subValue && <p className="text-xs text-default-500">{card.subValue}</p>}
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">📦</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">สินค้าทั้งหมด</p>
+                  <p className="text-2xl font-semibold text-gray-900">{data?.summary.totalProducts || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">👥</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">พนักงาน</p>
+                  <p className="text-2xl font-semibold text-gray-900">{data?.summary.totalEmployees || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">💰</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">ยอดขายวันนี้</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {formatCurrency(data?.summary.todaySalesAmount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500">{data?.summary.todaySalesCount || 0} รายการ</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">📈</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">ยอดขายรวม</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {formatCurrency(data?.summary.totalSalesAmount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500">{data?.summary.totalSalesCount || 0} รายการ</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium">การขายล่าสุด</h3>
-              </CardHeader>
-              <CardBody className="p-0">
-                <Table aria-label="Recent Sales Table">
-                  <TableHeader>
-                    <TableColumn>พนักงาน</TableColumn>
-                    <TableColumn>ประเภท</TableColumn>
-                    <TableColumn>ยอดรวม</TableColumn>
-                  </TableHeader>
-                  <TableBody items={data?.recentSales || []} emptyContent="ยังไม่มีการขาย">
-                    {(item) => (
-                      <TableRow key={item._id}>
-                        <TableCell>
-                          <p className="font-medium">{item.employeeName}</p>
-                          <p className="text-sm text-default-500">{formatDate(item.saleDate)}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Chip color={item.type === 'เบิก' ? "danger" : "success"} variant="flat">{item.type}</Chip>
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.totalAmount)}</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardBody>
-            </Card>
+            {/* Recent Sales */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">การขายล่าสุด</h3>
+              </div>
+              <div className="p-6">
+                {data?.recentSales && data.recentSales.length > 0 ? (
+                  <div className="space-y-4">
+                    {data.recentSales.map((sale, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900">{sale.employeeName}</p>
+                          <p className="text-sm text-gray-500">
+                            {sale.type} • {formatDate(sale.saleDate)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">
+                            {formatCurrency(sale.totalAmount)}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {sale.items.length} รายการ
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">ยังไม่มีการขาย</p>
+                )}
+              </div>
+            </div>
 
+            {/* Low Stock Products (Admin only) */}
             {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-medium">สินค้าใกล้หมด</h3>
-                </CardHeader>
-                <CardBody className="p-0">
-                  <Table aria-label="Low Stock Products Table">
-                    <TableHeader>
-                      <TableColumn>สินค้า</TableColumn>
-                      <TableColumn>สต็อก</TableColumn>
-                      <TableColumn>ราคา</TableColumn>
-                    </TableHeader>
-                    <TableBody items={data?.lowStockProducts || []} emptyContent="ไม่มีสินค้าใกล้หมด">
-                      {(item) => (
-                        <TableRow key={item._id}>
-                          <TableCell>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-default-500">{item.category}</p>
-                          </TableCell>
-                          <TableCell>
-                            <Chip color="warning" variant="solid">{item.stock} ชิ้น</Chip>
-                          </TableCell>
-                          <TableCell>{formatCurrency(item.price)}</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardBody>
-              </Card>
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">สินค้าใกล้หมด</h3>
+                </div>
+                <div className="p-6">
+                  {data?.lowStockProducts && data.lowStockProducts.length > 0 ? (
+                    <div className="space-y-4">
+                      {data.lowStockProducts.map((product, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{product.name}</p>
+                            <p className="text-sm text-gray-500">{product.category}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-red-600">
+                              เหลือ {product.stock} ชิ้น
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {formatCurrency(product.price)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">สินค้าทุกรายการมีสต็อกเพียงพอ</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
