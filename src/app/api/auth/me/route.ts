@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
-import User from '../../../../../lib/models/User'
+import User, { IUser } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     // Get fresh user data from database
-    const userData = await User.findOne({ _id: user.userId })
+    const userData: IUser | null = await User.findOne({ _id: user.userId })
       .select('-password')
       .lean()
     
