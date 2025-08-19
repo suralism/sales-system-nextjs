@@ -20,7 +20,6 @@ import {
   Card, 
   CardBody 
 } from "@nextui-org/react";
-import Button from '@/components/Button';
 
 interface LayoutProps {
   children: React.ReactNode
