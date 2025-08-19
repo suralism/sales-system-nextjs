@@ -13,8 +13,8 @@ interface SaleItem {
   productName: string
   pricePerUnit: number
   withdrawal: number
-  return: number
-  defective: number
+  return: number | ''
+  defective: number | ''
   category?: CategoryType
 }
 
@@ -47,7 +47,7 @@ export default function SettlementPage() {
   const [showDetails, setShowDetails] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [itemsForm, setItemsForm] = useState<SaleItem[]>([])
-  const [deliveredAmount, setDeliveredAmount] = useState(0)
+  const [deliveredAmount, setDeliveredAmount] = useState('')
   const [categorySummary, setCategorySummary] = useState({ main: 0, optional: 0 })
 
   const fetchSales = useCallback(async () => {
@@ -92,7 +92,10 @@ export default function SettlementPage() {
   const updateCategorySummary = (items: SaleItem[]) => {
     const summary = items.reduce(
       (acc, item) => {
-        const sold = item.withdrawal - item.return - item.defective
+        const sold =
+          (Number(item.withdrawal) || 0) -
+          (Number(item.return) || 0) -
+          (Number(item.defective) || 0)
         if (item.category === CATEGORY_TYPES[0]) acc.main += sold
         else if (item.category === CATEGORY_TYPES[1]) acc.optional += sold
         return acc
@@ -104,7 +107,7 @@ export default function SettlementPage() {
 
   const openSettle = async (sale: Sale) => {
     setSelectedSale(sale)
-    setDeliveredAmount((sale.cashAmount || 0) + (sale.transferAmount || 0))
+    setDeliveredAmount(String((sale.cashAmount || 0) + (sale.transferAmount || 0)))
     const itemsWithCategory = await fetchItemCategories(sale.items)
     setItemsForm(itemsWithCategory)
     updateCategorySummary(itemsWithCategory)
@@ -118,10 +121,13 @@ export default function SettlementPage() {
     setShowDetails(true)
   }
 
-  const updateItem = (index: number, field: 'return' | 'defective', value: number) => {
+  const updateItem = (index: number, field: 'return' | 'defective', value: string) => {
     setItemsForm(prev => {
       const newItems = [...prev]
-      newItems[index] = { ...newItems[index], [field]: value }
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value === '' ? '' : parseInt(value, 10)
+      }
       updateCategorySummary(newItems)
       return newItems
     })
@@ -139,15 +145,15 @@ export default function SettlementPage() {
           items: itemsForm.map(item => ({
             productId: item.productId,
             withdrawal: item.withdrawal,
-            return: item.return,
-            defective: item.defective
+            return: Number(item.return) || 0,
+            defective: Number(item.defective) || 0
           })),
-          cashAmount: deliveredAmount,
+          cashAmount: Number(deliveredAmount) || 0,
           transferAmount: 0,
           customerPending: 0,
           expenseAmount: 0,
           awaitingTransfer: 0,
-          paidAmount: deliveredAmount,
+          paidAmount: Number(deliveredAmount) || 0,
           settled: true
         })
       })
@@ -188,10 +194,12 @@ export default function SettlementPage() {
 
   const unsettledSales = sales
   const totalAmount = itemsForm.reduce(
-    (sum, item) => sum + item.pricePerUnit * (item.withdrawal - item.return - item.defective),
+    (sum, item) =>
+      sum +
+      item.pricePerUnit * ((Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)),
     0
   )
-  const remaining = selectedSale ? totalAmount - deliveredAmount : 0
+  const remaining = selectedSale ? totalAmount - (Number(deliveredAmount) || 0) : 0
 
   return (
     <ProtectedRoute requiredRole="admin">
@@ -266,7 +274,10 @@ export default function SettlementPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {selectedSale.items.map((item, idx) => {
-                        const sold = item.withdrawal - item.return - item.defective
+                        const sold =
+                          (Number(item.withdrawal) || 0) -
+                          (Number(item.return) || 0) -
+                          (Number(item.defective) || 0)
                         return (
                           <tr key={idx}>
                             <td className="px-4 py-2">{item.productName}</td>
@@ -319,7 +330,10 @@ export default function SettlementPage() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {itemsForm.map((item, idx) => {
-                          const sold = item.withdrawal - item.return - item.defective
+                          const sold =
+                            (Number(item.withdrawal) || 0) -
+                            (Number(item.return) || 0) -
+                            (Number(item.defective) || 0)
                           return (
                             <tr key={idx}>
                               <td className="px-4 py-2">{item.productName}</td>
@@ -329,8 +343,8 @@ export default function SettlementPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  value={item.return}
-                                  onChange={e => updateItem(idx, 'return', parseInt(e.target.value) || 0)}
+                                  value={item.return === '' ? '' : item.return}
+                                  onChange={e => updateItem(idx, 'return', e.target.value)}
                                   className="w-20 px-2 py-1 border border-gray-300 rounded"
                                 />
                               </td>
@@ -338,8 +352,8 @@ export default function SettlementPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  value={item.defective}
-                                  onChange={e => updateItem(idx, 'defective', parseInt(e.target.value) || 0)}
+                                  value={item.defective === '' ? '' : item.defective}
+                                  onChange={e => updateItem(idx, 'defective', e.target.value)}
                                   className="w-20 px-2 py-1 border border-gray-300 rounded"
                                 />
                               </td>
@@ -364,7 +378,7 @@ export default function SettlementPage() {
                       type="number"
                       min="0"
                       value={deliveredAmount}
-                      onChange={e => setDeliveredAmount(parseFloat(e.target.value) || 0)}
+                      onChange={e => setDeliveredAmount(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
