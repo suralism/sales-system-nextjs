@@ -348,20 +348,20 @@ export default function SettlementPage() {
                               <td className="px-4 py-2 text-right">{item.withdrawal}</td>
                               <td className="px-4 py-2 text-right">
                                 <input
-                                  type="number"
-                                  min="0"
+                                  type="text"
+                                  inputMode="numeric"
                                   value={item.return === '' ? '' : item.return}
                                   onChange={e => updateItem(idx, 'return', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </td>
                               <td className="px-4 py-2 text-right">
                                 <input
-                                  type="number"
-                                  min="0"
+                                  type="text"
+                                  inputMode="numeric"
                                   value={item.defective === '' ? '' : item.defective}
                                   onChange={e => updateItem(idx, 'defective', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </td>
                               <td className="px-4 py-2 text-right">{sold}</td>
@@ -382,11 +382,11 @@ export default function SettlementPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ยอดที่นำส่ง</label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={deliveredAmount}
                       onChange={e => setDeliveredAmount(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="text-sm text-gray-700">
