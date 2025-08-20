@@ -346,11 +346,11 @@ export default function ProductsPage() {
                             <div key={price.level} className="flex items-center space-x-2">
                               <span className="text-xs text-gray-500 w-24">{price.level}</span>
                               <input
-                                type="number"
-                                step="0.0001"
+                                type="text"
+                                inputMode="decimal"
                                 value={price.value}
                                 onChange={(e) => handlePriceChange(index, e.target.value)}
-                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                           ))}
@@ -446,9 +446,8 @@ export default function ProductsPage() {
                                 {price.level} (บาท) *
                             </label>
                             <input
-                                type="number"
-                                step="0.0001"
-                                min="0"
+                                type="text"
+                                inputMode="decimal"
                                 required
                                 value={price.value}
                                 onChange={(e) => handlePriceChange(index, e.target.value)}
