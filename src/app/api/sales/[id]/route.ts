@@ -4,7 +4,6 @@ import Sale, { ISaleItem } from '../../../../../lib/models/Sale'
 import Product from '../../../../../lib/models/Product'
 import User from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
-import mongoose from 'mongoose'
 
 export async function DELETE(
   request: NextRequest,
@@ -19,26 +18,14 @@ export async function DELETE(
 
     await connectDB()
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
-
-    try {
-      const sale = await Sale.findById(saleId).session(session)
-      if (!sale) {
-        throw new Error('Sale not found')
-      }
-
-      await Sale.findByIdAndDelete(saleId).session(session)
-
-      await session.commitTransaction()
-
-      return NextResponse.json({ message: 'Sale deleted successfully' })
-    } catch (error) {
-      await session.abortTransaction()
-      throw error
-    } finally {
-      session.endSession()
+    const sale = await Sale.findById(saleId)
+    if (!sale) {
+      return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
     }
+
+    await Sale.findByIdAndDelete(saleId)
+
+    return NextResponse.json({ message: 'Sale deleted successfully' })
   } catch (error) {
     console.error('Delete sale error:', error)
     return NextResponse.json(
