@@ -14,8 +14,6 @@ interface RecentSale {
 
 interface DashboardData {
   summary: {
-    totalProducts: number
-    totalEmployees: number
     todaySalesAmount: number
     todaySalesCount: number
     monthlySalesAmount: number
@@ -92,31 +90,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-2xl">📦</span>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">สินค้าทั้งหมด</p>
-                  <p className="text-2xl font-semibold text-gray-900">{data?.summary.totalProducts || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-2xl">👥</span>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">พนักงาน</p>
-                  <p className="text-2xl font-semibold text-gray-900">{data?.summary.totalEmployees || 0}</p>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
