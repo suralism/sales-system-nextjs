@@ -7,6 +7,7 @@ import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
+import Button from '@/components/Button'
 
 interface SaleItem {
   productId: string
@@ -49,6 +50,7 @@ export default function SettlementPage() {
   const [itemsForm, setItemsForm] = useState<SaleItem[]>([])
   const [deliveredAmount, setDeliveredAmount] = useState('')
   const [categorySummary, setCategorySummary] = useState({ main: 0, optional: 0 })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const fetchSales = useCallback(async () => {
     try {
@@ -136,6 +138,7 @@ export default function SettlementPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedSale) return
+    setIsSubmitting(true)
     try {
       const response = await fetch(`/api/sales/${selectedSale._id}`, {
         method: 'PUT',
@@ -170,6 +173,8 @@ export default function SettlementPage() {
     } catch (error) {
       console.error('Settle error:', error)
       toast.error('เกิดข้อผิดพลาด')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -397,12 +402,13 @@ export default function SettlementPage() {
                     >
                       ยกเลิก
                     </button>
-                    <button
+                    <Button
                       type="submit"
+                      isLoading={isSubmitting}
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transform transition-all hover:scale-105 active:scale-95"
                     >
                       บันทึก
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>

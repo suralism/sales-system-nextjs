@@ -6,6 +6,7 @@ import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast';
+import Button from '@/components/Button'
 
 interface Price {
   level: string;
@@ -68,6 +69,7 @@ export default function SalesPage() {
   const [selectedProductIndex, setSelectedProductIndex] = useState(-1)
   const [detailSale, setDetailSale] = useState<Sale | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -172,7 +174,8 @@ export default function SalesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    setIsSubmitting(true)
+
     try {
       const processedItems = formData.items.map(item => ({
         productId: item.productId,
@@ -212,6 +215,8 @@ export default function SalesPage() {
     } catch (error) {
       console.error('Submit error:', error)
       toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -620,12 +625,13 @@ export default function SalesPage() {
                       >
                         ยกเลิก
                       </button>
-                      <button
+                      <Button
                         type="submit"
+                        isLoading={isSubmitting}
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transform transition-all hover:scale-105 active:scale-95"
                       >
                         {editingSaleId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการเบิก'}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 </div>
