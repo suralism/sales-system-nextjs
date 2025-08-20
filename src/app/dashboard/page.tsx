@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
+import DailySalesChart from '@/components/DailySalesChart'
 
 interface RecentSale {
   employeeName: string
@@ -10,6 +11,11 @@ interface RecentSale {
   saleDate: string
   totalAmount: number
   items: unknown[]
+}
+
+interface DailySale {
+  date: string
+  totalAmount: number
 }
 
 interface DashboardData {
@@ -22,6 +28,7 @@ interface DashboardData {
     totalSalesCount: number
   }
   recentSales: RecentSale[]
+  dailySales: DailySale[]
 }
 
 export default function DashboardPage() {
@@ -170,7 +177,15 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-
+            {/* Daily Sales Chart */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">ยอดขายรายวัน</h3>
+              </div>
+              <div className="p-6">
+                <DailySalesChart data={data?.dailySales || []} />
+              </div>
+            </div>
           </div>
         </div>
       </Layout>
