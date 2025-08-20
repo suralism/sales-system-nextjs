@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1)
     
     const salesQuery: Record<string, unknown> = { settled: true }
     
@@ -36,6 +39,7 @@ export async function GET(request: NextRequest) {
       totalProducts,
       totalEmployees,
       todaySales,
+      monthSales,
       totalSales,
       recentSales
     ] = await Promise.all([
@@ -53,6 +57,23 @@ export async function GET(request: NextRequest) {
           $match: {
             ...salesQuery,
             saleDate: { $gte: today, $lt: tomorrow }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$totalAmount' },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // This month's sales
+      Sale.aggregate([
+        {
+          $match: {
+            ...salesQuery,
+            saleDate: { $gte: monthStart, $lt: nextMonthStart }
           }
         },
         {
@@ -87,6 +108,7 @@ export async function GET(request: NextRequest) {
     
     // Format the response
     const todayStats = todaySales[0] || { totalAmount: 0, count: 0 }
+    const monthStats = monthSales[0] || { totalAmount: 0, count: 0 }
     const totalStats = totalSales[0] || { totalAmount: 0, count: 0 }
     
     const dashboardData = {
@@ -95,6 +117,8 @@ export async function GET(request: NextRequest) {
         totalEmployees,
         todaySalesAmount: todayStats.totalAmount,
         todaySalesCount: todayStats.count,
+        monthlySalesAmount: monthStats.totalAmount,
+        monthlySalesCount: monthStats.count,
         totalSalesAmount: totalStats.totalAmount,
         totalSalesCount: totalStats.count
       },
