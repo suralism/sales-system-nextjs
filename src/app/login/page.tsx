@@ -89,11 +89,6 @@ export default function LoginPage() {
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </Button>
           </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>บัญชีทดสอบ:</p>
-            <p className="font-mono">admin / admin123</p>
-          </div>
         </div>
       </div>
     </div>
