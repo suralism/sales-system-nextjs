@@ -567,6 +567,7 @@ export default function SalesPage() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No.</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">สินค้า</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ราคา</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">เบิก</th>
@@ -577,6 +578,7 @@ export default function SalesPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {formData.items.map((item, index) => (
                             <tr key={item.productId}>
+                              <td className="px-4 py-2 whitespace-nowrap">{index + 1}</td>
                               <td className="px-4 py-2 whitespace-nowrap">{item.productName}</td>
                               <td className="px-4 py-2 whitespace-nowrap">{formatCurrency(item.pricePerUnit)}</td>
                               <td className="px-4 py-2">
@@ -588,7 +590,7 @@ export default function SalesPage() {
                                   className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </td>
-                                {/* คืนและของเสียจะใส่ตอนเคลียบิล */}
+                              {/* คืนและของเสียจะใส่ตอนเคลียบิล */}
                               <td className="px-4 py-2">
                                 <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700">ลบ</button>
                               </td>
@@ -649,6 +651,7 @@ export default function SalesPage() {
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500">No.</th>
                           <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
@@ -666,6 +669,7 @@ export default function SalesPage() {
                             (Number(item.defective) || 0)
                           return (
                             <tr key={index}>
+                              <td className="px-4 py-2">{index + 1}</td>
                               <td className="px-4 py-2">{item.productName}</td>
                               <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
                               <td className="px-4 py-2 text-right">{item.withdrawal}</td>
@@ -682,6 +686,7 @@ export default function SalesPage() {
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500">No.</th>
                           <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
                           <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
@@ -691,6 +696,7 @@ export default function SalesPage() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {detailSale.items.map((item, index) => (
                           <tr key={index}>
+                            <td className="px-4 py-2">{index + 1}</td>
                             <td className="px-4 py-2">{item.productName}</td>
                             <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
                             <td className="px-4 py-2 text-right">{item.withdrawal}</td>
