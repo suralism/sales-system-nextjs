@@ -22,8 +22,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     const skip = (page - 1) * limit
+    const search = searchParams.get('search')?.toString().trim()
 
-    const query = { isActive: true }
+    const query: Record<string, unknown> = { isActive: true }
+    if (search) {
+      query.name = { $regex: search, $options: 'i' }
+    }
+
     const [products, total] = await Promise.all([
       Product.find(query)
         .sort({ name: 1 })

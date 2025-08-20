@@ -34,6 +34,8 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     prices: priceLevels.map(level => ({ level, value: '' as string | number })),
@@ -43,7 +45,8 @@ export default function ProductsPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/products?page=${page}&limit=${limit}`, {
+      const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''
+      const response = await fetch(`/api/products?page=${page}&limit=${limit}${searchQuery}`, {
         credentials: 'include'
       })
 
@@ -60,11 +63,17 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page])
+  }, [page, searchTerm])
 
   useEffect(() => {
     fetchProducts()
   }, [fetchProducts])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPage(1)
+    setSearchTerm(searchInput.trim())
+  }
 
   const handleImportClick = () => {
     fileInputRef.current?.click()
@@ -276,6 +285,22 @@ export default function ProductsPage() {
             onChange={handleFileChange}
             className="hidden"
           />
+
+          <form onSubmit={handleSearch} className="flex justify-end mb-4">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="ค้นหาสินค้า"
+              className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
+            >
+              ค้นหา
+            </button>
+          </form>
 
           {/* Products Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
