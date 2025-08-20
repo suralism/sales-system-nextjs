@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
+    const weekStart = new Date(today)
+    weekStart.setDate(weekStart.getDate() - 6)
 
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1)
@@ -41,7 +43,8 @@ export async function GET(request: NextRequest) {
       todaySales,
       monthSales,
       totalSales,
-      recentSales
+      recentSales,
+      dailySalesRaw
     ] = await Promise.all([
       // Total active products
       Product.countDocuments({ isActive: true }),
@@ -103,14 +106,64 @@ export async function GET(request: NextRequest) {
       Sale.find(salesQuery)
         .sort({ saleDate: -1 })
         .limit(5)
-        .lean()
+        .lean(),
+
+      // Daily sales for last 7 days
+      Sale.aggregate([
+        {
+          $match: {
+            ...salesQuery,
+            saleDate: { $gte: weekStart, $lt: tomorrow }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$saleDate' },
+              month: { $month: '$saleDate' },
+              day: { $dayOfMonth: '$saleDate' }
+            },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        },
+        {
+          $sort: {
+            '_id.year': 1,
+            '_id.month': 1,
+            '_id.day': 1
+          }
+        }
+      ])
     ])
     
     // Format the response
     const todayStats = todaySales[0] || { totalAmount: 0, count: 0 }
     const monthStats = monthSales[0] || { totalAmount: 0, count: 0 }
     const totalStats = totalSales[0] || { totalAmount: 0, count: 0 }
-    
+
+    const dailySalesMap = new Map(
+      dailySalesRaw.map(
+        (item: { _id: { year: number; month: number; day: number }; totalAmount: number }) => {
+          const date = new Date(
+            item._id.year,
+            item._id.month - 1,
+            item._id.day
+          )
+            .toISOString()
+            .split('T')[0]
+          return [date, item.totalAmount]
+        }
+      )
+    )
+
+    const dailySales = [] as { date: string; totalAmount: number }[]
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const iso = date.toISOString().split('T')[0]
+      dailySales.push({ date: iso, totalAmount: dailySalesMap.get(iso) || 0 })
+    }
+
     const dashboardData = {
       summary: {
         totalProducts,
@@ -122,9 +175,10 @@ export async function GET(request: NextRequest) {
         totalSalesAmount: totalStats.totalAmount,
         totalSalesCount: totalStats.count
       },
-      recentSales
+      recentSales,
+      dailySales
     }
-    
+
     return NextResponse.json(dashboardData)
     
   } catch (error) {
