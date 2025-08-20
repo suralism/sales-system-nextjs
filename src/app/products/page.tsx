@@ -117,7 +117,10 @@ export default function ProductsPage() {
           if (p.value === '' || isNaN(parseFloat(p.value as string))) {
               throw new Error(`Price for level ${p.level} is invalid.`);
           }
-          return {...p, value: parseFloat(p.value as string) };
+          return {
+              ...p,
+              value: parseFloat(parseFloat(p.value as string).toFixed(4))
+          };
       });
 
       const response = await fetch(url, {
@@ -217,7 +220,9 @@ export default function ProductsPage() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
-      currency: 'THB'
+      currency: 'THB',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount)
   }
 
@@ -342,6 +347,7 @@ export default function ProductsPage() {
                               <span className="text-xs text-gray-500 w-24">{price.level}</span>
                               <input
                                 type="number"
+                                step="0.0001"
                                 value={price.value}
                                 onChange={(e) => handlePriceChange(index, e.target.value)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded"
@@ -441,7 +447,7 @@ export default function ProductsPage() {
                             </label>
                             <input
                                 type="number"
-                                step="0.01"
+                                step="0.0001"
                                 min="0"
                                 required
                                 value={price.value}
