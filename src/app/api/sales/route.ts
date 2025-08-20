@@ -128,133 +128,122 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const session = await mongoose.startSession()
-    session.startTransaction()
-    
-    try {
-      const processedItems = []
-      let totalAmount = 0
-      
-      for (const item of items) {
-        const { productId, withdrawal, return: returnQty, defective } = item
-        
-        if (!productId) {
-          throw new Error('Invalid item data: productId is missing')
-        }
-        
-        const product = await Product.findById(productId).session(session)
-        if (!product || !product.isActive) {
-          throw new Error(`Product not found: ${productId}`)
-        }
-        
-        const priceInfo = product.prices.find((p: IPrice) => p.level === employee.priceLevel);
-        if (!priceInfo) {
-          throw new Error(`Price for level ${employee.priceLevel} not found for product ${product.name}`)
-        }
-        const price = priceInfo.value;
+    const processedItems = []
+    let totalAmount = 0
 
-        const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
-        const itemTotalPrice = price * netQuantity
+    for (const item of items) {
+      const { productId, withdrawal, return: returnQty, defective } = item
 
-        processedItems.push({
-          productId: product._id,
-          productName: product.name,
-          pricePerUnit: price,
-          withdrawal: withdrawal || 0,
-          return: returnQty || 0,
-          defective: defective || 0,
-          totalPrice: itemTotalPrice
-        })
-
-        totalAmount += itemTotalPrice
+      if (!productId) {
+        throw new Error('Invalid item data: productId is missing')
       }
 
-      let existingSale: ISale | null = null
-      if (type === 'เบิก') {
-        existingSale = await Sale.findOne({
-          employeeId: targetEmployeeId,
-          type: 'เบิก',
-          settled: false
-        }).session(session)
+      const product = await Product.findById(productId)
+      if (!product || !product.isActive) {
+        throw new Error(`Product not found: ${productId}`)
       }
 
-      if (existingSale) {
-        processedItems.forEach(newItem => {
-          const existingItem = existingSale!.items.find(
-            item => item.productId.toString() === newItem.productId.toString()
-          )
-
-          if (existingItem) {
-            existingItem.withdrawal += newItem.withdrawal
-            existingItem.return += newItem.return
-            existingItem.defective += newItem.defective
-            existingItem.totalPrice = existingItem.pricePerUnit * (
-              existingItem.withdrawal -
-              existingItem.return -
-              existingItem.defective
-            )
-          } else {
-            existingSale!.items.push(newItem)
-          }
-        })
-
-        existingSale.totalAmount = existingSale.items.reduce(
-          (sum, item) => sum + item.totalPrice,
-          0
+      const priceInfo = product.prices.find((p: IPrice) => p.level === employee.priceLevel)
+      if (!priceInfo) {
+        throw new Error(
+          `Price for level ${employee.priceLevel} not found for product ${product.name}`
         )
-        existingSale.pendingAmount = Math.max(
-          existingSale.totalAmount - (existingSale.paidAmount || 0),
-          0
-        )
-
-        if (notes?.trim()) {
-          existingSale.notes = existingSale.notes
-            ? `${existingSale.notes}\n${notes.trim()}`
-            : notes.trim()
-        }
-
-        await existingSale.save({ session })
-        await session.commitTransaction()
-
-        return NextResponse.json({
-          message: 'Sale updated successfully',
-          sale: existingSale
-        })
       }
+      const price = priceInfo.value
 
-      const newSale = new Sale({
-        employeeId: targetEmployeeId,
-        employeeName: employee.name,
-        type,
-        items: processedItems,
-        totalAmount,
-        notes: notes?.trim(),
-        paidAmount: 0,
-        paymentMethod: 'cash',
-        pendingAmount: totalAmount,
-        cashAmount: 0,
-        transferAmount: 0,
-        customerPending: 0,
-        expenseAmount: 0,
-        awaitingTransfer: 0,
-        settled: settled ?? false
+      const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
+      const itemTotalPrice = price * netQuantity
+
+      processedItems.push({
+        productId: product._id,
+        productName: product.name,
+        pricePerUnit: price,
+        withdrawal: withdrawal || 0,
+        return: returnQty || 0,
+        defective: defective || 0,
+        totalPrice: itemTotalPrice
       })
 
-      await newSale.save({ session })
+      totalAmount += itemTotalPrice
+    }
 
-      await session.commitTransaction()
+    let existingSale: ISale | null = null
+    if (type === 'เบิก') {
+      existingSale = await Sale.findOne({
+        employeeId: targetEmployeeId,
+        type: 'เบิก',
+        settled: false
+      })
+    }
+
+    if (existingSale) {
+      processedItems.forEach((newItem) => {
+        const existingItem = existingSale!.items.find(
+          (item) => item.productId.toString() === newItem.productId.toString()
+        )
+
+        if (existingItem) {
+          existingItem.withdrawal += newItem.withdrawal
+          existingItem.return += newItem.return
+          existingItem.defective += newItem.defective
+          existingItem.totalPrice =
+            existingItem.pricePerUnit *
+            (existingItem.withdrawal - existingItem.return - existingItem.defective)
+        } else {
+          existingSale!.items.push(newItem)
+        }
+      })
+
+      existingSale.totalAmount = existingSale.items.reduce(
+        (sum, item) => sum + item.totalPrice,
+        0
+      )
+      existingSale.pendingAmount = Math.max(
+        existingSale.totalAmount - (existingSale.paidAmount || 0),
+        0
+      )
+
+      if (notes?.trim()) {
+        existingSale.notes = existingSale.notes
+          ? `${existingSale.notes}\n${notes.trim()}`
+          : notes.trim()
+      }
+
+      await existingSale.save()
 
       return NextResponse.json({
+        message: 'Sale updated successfully',
+        sale: existingSale
+      })
+    }
+
+    const newSale = new Sale({
+      employeeId: targetEmployeeId,
+      employeeName: employee.name,
+      type,
+      items: processedItems,
+      totalAmount,
+      notes: notes?.trim(),
+      paidAmount: 0,
+      paymentMethod: 'cash',
+      pendingAmount: totalAmount,
+      cashAmount: 0,
+      transferAmount: 0,
+      customerPending: 0,
+      expenseAmount: 0,
+      awaitingTransfer: 0,
+      settled: settled ?? false
+    })
+
+    await newSale.save()
+
+    return NextResponse.json(
+      {
         message: 'Sale recorded successfully',
         sale: newSale
-      }, { status: 201 })
-      
-    } catch (error) {
-      await session.abortTransaction()
-      throw error
-    } finally {
-      session.endSession()
-    }
+      },
+      { status: 201 }
+    )
     
   } catch (error) {
     console.error('Create sale error:', error)
