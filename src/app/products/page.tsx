@@ -4,8 +4,11 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast'
 import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
+import Button from '@/components/Button'
+import { Input, Select } from '@/components/Form'
+import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/Card'
 
 interface Price {
   level: string;
@@ -248,41 +251,56 @@ export default function ProductsPage() {
 
   return (
     <ProtectedRoute requiredRole="admin">
-      <Layout>
+      <Layout enablePullToRefresh={true} onRefresh={fetchProducts}>
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">จัดการสินค้า</h1>
-              <p className="text-gray-600">เพิ่ม แก้ไข และจัดการสินค้าในระบบ</p>
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📦 จัดการสินค้า</h1>
+              <p className="text-gray-600 mt-1">เพิ่ม แก้ไข และจัดการสินค้าในระบบ</p>
             </div>
-            <div className="flex flex-col items-end">
-              <div className="space-x-2">
-                <button
-                  onClick={handleImportClick}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  นำเข้าจาก CSV
-                </button>
-                <button
-                  onClick={() => {
-                    resetForm()
-                    setShowModal(true)
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  เพิ่มสินค้าใหม่
-                </button>
-              </div>
-              <a
-                href="/sample-products.csv"
-                download
-                className="mt-2 text-sm text-blue-600 hover:underline"
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleImportClick}
+                variant="success"
+                size="lg"
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                  </svg>
+                }
               >
-                ดาวน์โหลดไฟล์ตัวอย่าง
-              </a>
+                นำเข้า CSV
+              </Button>
+              <Button
+                onClick={() => {
+                  resetForm()
+                  setShowModal(true)
+                }}
+                size="lg"
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                }
+              >
+                เพิ่มสินค้าใหม่
+              </Button>
             </div>
           </div>
 
+          {/* Download Sample Link */}
+          <div className="text-center sm:text-right">
+            <a
+              href="/sample-products.csv"
+              download
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+            >
+              📄 ดาวน์โหลดไฟล์ตัวอย่าง
+            </a>
+          </div>
+
+          {/* Hidden File Input */}
           <input
             type="file"
             accept=".csv"
@@ -291,205 +309,407 @@ export default function ProductsPage() {
             className="hidden"
           />
 
-          <form onSubmit={handleSearch} className="flex justify-end mb-4">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="ค้นหาสินค้า"
-              className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
-            >
-              ค้นหา
-            </button>
-          </form>
+          {/* Search Section */}
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <form onSubmit={handleSearch}>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      placeholder="ค้นหาสินค้า..."
+                      leftIcon={
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      }
+                      fullWidth
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="sm:w-auto w-full"
+                  >
+                    ค้นหา
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
 
-          {/* Products Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สินค้า
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ราคา
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      หมวดหมู่
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      การจัดการ
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+          {/* Products Display */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                  <span className="text-xl">📦</span>
+                </div>
+                <CardTitle>รายการสินค้า</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Mobile View - Card Layout */}
+              <div className="block lg:hidden">
+                <div className="space-y-3 p-4">
                   {products.map((product) => {
-                    const needsUpdate = !product.prices || product.prices.length === 0;
-                    const isEditing = editingProductId === product._id;
+                    const needsUpdate = !product.prices || product.prices.length === 0
+                    const isEditing = editingProductId === product._id
                     return isEditing ? (
-                      <tr key={product._id} className="bg-yellow-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-y-1">
-                          {formData.prices.map((price, index) => (
-                            <div key={price.level} className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500 w-24">{price.level}</span>
-                              <input
+                      <Card key={product._id} className="bg-yellow-50 border-2 border-yellow-200">
+                        <CardContent className="p-4">
+                          <form onSubmit={handleSubmit}>
+                            <div className="space-y-4">
+                              <Input
+                                label="ชื่อสินค้า"
                                 type="text"
-                                inputMode="decimal"
-                                value={price.value}
-                                onChange={(e) => handlePriceChange(index, e.target.value)}
-                                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                fullWidth
                               />
+                              
+                              {formData.prices.map((price, index) => (
+                                <Input
+                                  key={price.level}
+                                  label={`${price.level} (บาท)`}
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={price.value}
+                                  onChange={(e) => handlePriceChange(index, e.target.value)}
+                                  fullWidth
+                                />
+                              ))}
+                              
+                              <Select
+                                label="หมวดหมู่"
+                                value={formData.category}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value as CategoryType })}
+                                options={CATEGORY_TYPES.map(cat => ({ value: cat, label: cat }))}
+                                fullWidth
+                              />
+                              
+                              <div className="flex gap-3 pt-2">
+                                <Button
+                                  type="submit"
+                                  variant="success"
+                                  size="lg"
+                                  fullWidth
+                                >
+                                  บันทึก
+                                </Button>
+                                <Button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  variant="secondary"
+                                  size="lg"
+                                  fullWidth
+                                >
+                                  ยกเลิก
+                                </Button>
+                              </div>
                             </div>
-                          ))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <select
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
-                          >
-                            {CATEGORY_TYPES.map(cat => (
-                              <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => handleSubmit()}
-                            className="text-green-600 hover:text-green-900 transform transition-all hover:scale-105 active:scale-95"
-                            type="button"
-                          >
-                            บันทึก
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="text-gray-600 hover:text-gray-900"
-                            type="button"
-                          >
-                            ยกเลิก
-                          </button>
-                        </td>
-                      </tr>
+                          </form>
+                        </CardContent>
+                      </Card>
                     ) : (
-                      <tr key={product._id} className={`hover:bg-gray-50 ${needsUpdate ? 'bg-yellow-50' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(getNormalPrice(product))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.category || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            แก้ไข
-                          </button>
-                          <button
-                            onClick={() => handleDelete(product._id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            ลบ
-                          </button>
-                        </td>
-                      </tr>
+                      <Card key={product._id} className={`hover:shadow-md transition-shadow ${
+                        needsUpdate ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 border border-gray-200'
+                      }`}>
+                        <CardContent className="p-4">
+                          <div className="space-y-3">
+                            {/* Header Row */}
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{product.name}</h4>
+                                <p className="text-sm text-gray-600 mt-1">หมวดหมู่: {product.category || '-'}</p>
+                                {needsUpdate && (
+                                  <div className="inline-flex px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full mt-2">
+                                    ต้องอัปเดตราคา
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Price Display */}
+                            <div className="bg-white rounded-lg p-3 border">
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatCurrency(getNormalPrice(product))}
+                              </p>
+                              <p className="text-sm text-gray-500">ราคาปกติ</p>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 pt-2 border-t border-gray-200">
+                              <Button
+                                onClick={() => handleEdit(product)}
+                                variant="secondary"
+                                size="lg"
+                                fullWidth
+                                leftIcon={
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                }
+                              >
+                                แก้ไข
+                              </Button>
+                              <Button
+                                onClick={() => handleDelete(product._id)}
+                                variant="danger"
+                                size="lg"
+                                fullWidth
+                                leftIcon={
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                }
+                              >
+                                ลบ
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )
                   })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </div>
+              </div>
+              
+              {/* Desktop View - Table Layout */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        สินค้า
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ราคา
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        หมวดหมู่
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        การจัดการ
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {products.map((product) => {
+                      const needsUpdate = !product.prices || product.prices.length === 0
+                      const isEditing = editingProductId === product._id
+                      return isEditing ? (
+                        <tr key={product._id} className="bg-yellow-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="text"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-y-1">
+                            {formData.prices.map((price, index) => (
+                              <div key={price.level} className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500 w-24">{price.level}</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={price.value}
+                                  onChange={(e) => handlePriceChange(index, e.target.value)}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                            ))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <select
+                              value={formData.category}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value as CategoryType })}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                            >
+                              {CATEGORY_TYPES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                            <button
+                              onClick={() => handleSubmit()}
+                              className="text-green-600 hover:text-green-900 transform transition-all hover:scale-105 active:scale-95"
+                              type="button"
+                            >
+                              บันทึก
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="text-gray-600 hover:text-gray-900"
+                              type="button"
+                            >
+                              ยกเลิก
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={product._id} className={`hover:bg-gray-50 ${
+                          needsUpdate ? 'bg-yellow-50' : ''
+                        }`}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                              {needsUpdate && (
+                                <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                  ต้องอัปเดต
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(getNormalPrice(product))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {product.category || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              แก้ไข
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product._id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              ลบ
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
           <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
 
-          {/* Modal */}
+          {/* Enhanced Mobile-Friendly Modal */}
           {showModal && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                <div className="mt-3">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    {editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}
-                  </h3>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ชื่อสินค้า *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    {formData.prices.map((price, index) => (
-                        <div key={index}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {price.level} (บาท) *
-                            </label>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                required
-                                value={price.value}
-                                onChange={(e) => handlePriceChange(index, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                    ))}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        หมวดหมู่ *
-                      </label>
-                      <select
-                        required
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="" disabled>เลือกหมวดหมู่</option>
-                        {CATEGORY_TYPES.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <button
-                        type="button"
+            <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm overflow-y-auto h-full w-full z-50 p-4">
+              <div className="relative min-h-screen flex items-center justify-center">
+                <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle size="xl">
+                        {editingProduct ? '📝 แก้ไขสินค้า' : '➕ เพิ่มสินค้าใหม่'}
+                      </CardTitle>
+                      <Button
                         onClick={() => setShowModal(false)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="max-h-[70vh] overflow-y-auto p-6">
+                    <form onSubmit={handleSubmit}>
+                      <div className="space-y-6">
+                        {/* Product Name */}
+                        <div className="space-y-4">
+                          <div className="border-b border-gray-200 pb-2">
+                            <h3 className="text-lg font-medium text-gray-900">ข้อมูลสินค้า</h3>
+                            <p className="text-sm text-gray-600 mt-1">ระบุชื่อและหมวดหมู่ของสินค้า</p>
+                          </div>
+                          <div className="space-y-4">
+                            <Input
+                              label="ชื่อสินค้า *"
+                              type="text"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              placeholder="กรอกชื่อสินค้า"
+                              required
+                              fullWidth
+                            />
+                            
+                            <Select
+                              label="หมวดหมู่ *"
+                              value={formData.category}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value as CategoryType })}
+                              options={[
+                                { value: '', label: 'เลือกหมวดหมู่' },
+                                ...CATEGORY_TYPES.map(cat => ({ value: cat, label: cat }))
+                              ]}
+                              required
+                              fullWidth
+                            />
+                          </div>
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="space-y-4">
+                          <div className="border-b border-gray-200 pb-2">
+                            <h3 className="text-lg font-medium text-gray-900">การกำหนดราคา</h3>
+                            <p className="text-sm text-gray-600 mt-1">กำหนดราคาสำหรับแต่ละระดับลูกค้า</p>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {formData.prices.map((price, index) => (
+                                <Input
+                                  key={index}
+                                  label={`${price.level} (บาท) *`}
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={price.value}
+                                  onChange={(e) => handlePriceChange(index, e.target.value)}
+                                  placeholder="0.00"
+                                  required
+                                  fullWidth
+                                  rightIcon={
+                                    <span className="text-gray-400 text-sm">บาท</span>
+                                  }
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </CardContent>
+                  
+                  <CardFooter>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                      <Button
+                        onClick={() => setShowModal(false)}
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        className="sm:w-auto"
                       >
                         ยกเลิก
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transform transition-all hover:scale-105 active:scale-95"
+                      </Button>
+                      <Button
+                        onClick={(e: any) => handleSubmit(e)}
+                        size="lg"
+                        fullWidth
+                        className="sm:w-auto"
+                        leftIcon={
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        }
                       >
                         {editingProduct ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า'}
-                      </button>
+                      </Button>
                     </div>
-                  </form>
-                </div>
+                  </CardFooter>
+                </Card>
               </div>
             </div>
           )}

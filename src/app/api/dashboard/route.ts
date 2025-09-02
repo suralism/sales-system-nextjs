@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1)
     
-    const salesQuery: Record<string, unknown> = { settled: true }
+    const salesQuery: Record<string, unknown> = {}
     
     if (currentUser.role === 'employee') {
       // Employee can only see their own statistics
@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
       todaySales,
       monthSales,
       totalSales,
+      monthlyQuantityByCategory,
+      monthlyProductDetails,
       recentSales,
       dailySalesRaw
     ] = await Promise.all([
@@ -102,6 +104,121 @@ export async function GET(request: NextRequest) {
         }
       ]),
       
+      // Monthly quantity by product category
+      Sale.aggregate([
+        {
+          $match: {
+            ...salesQuery,
+            saleDate: { $gte: monthStart, $lt: nextMonthStart }
+          }
+        },
+        {
+          $unwind: '$items'
+        },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product'
+          }
+        },
+        {
+          $unwind: '$product'
+        },
+        {
+          $group: {
+            _id: '$product.category',
+            totalQuantity: {
+              $sum: {
+                $subtract: [
+                  { $subtract: ['$items.withdrawal', '$items.return'] },
+                  '$items.defective'
+                ]
+              }
+            },
+            totalValue: {
+              $sum: {
+                $multiply: [
+                  {
+                    $subtract: [
+                      { $subtract: ['$items.withdrawal', '$items.return'] },
+                      '$items.defective'
+                    ]
+                  },
+                  '$items.pricePerUnit'
+                ]
+              }
+            }
+          }
+        }
+      ]),
+      
+      // Monthly product details breakdown
+      Sale.aggregate([
+        {
+          $match: {
+            ...salesQuery,
+            saleDate: { $gte: monthStart, $lt: nextMonthStart }
+          }
+        },
+        {
+          $unwind: '$items'
+        },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product'
+          }
+        },
+        {
+          $unwind: '$product'
+        },
+        {
+          $group: {
+            _id: {
+              productId: '$product._id',
+              productName: '$product.name',
+              category: '$product.category'
+            },
+            totalQuantity: {
+              $sum: {
+                $subtract: [
+                  { $subtract: ['$items.withdrawal', '$items.return'] },
+                  '$items.defective'
+                ]
+              }
+            },
+            totalValue: {
+              $sum: {
+                $multiply: [
+                  {
+                    $subtract: [
+                      { $subtract: ['$items.withdrawal', '$items.return'] },
+                      '$items.defective'
+                    ]
+                  },
+                  '$items.pricePerUnit'
+                ]
+              }
+            }
+          }
+        },
+        {
+          $match: {
+            totalQuantity: { $gt: 0 }
+          }
+        },
+        {
+          $sort: {
+            '_id.category': 1,
+            totalQuantity: -1
+          }
+        }
+      ]),
+      
       // Recent sales (last 5)
       Sale.find(salesQuery)
         .sort({ saleDate: -1 })
@@ -141,6 +258,41 @@ export async function GET(request: NextRequest) {
     const monthStats = monthSales[0] || { totalAmount: 0, count: 0 }
     const totalStats = totalSales[0] || { totalAmount: 0, count: 0 }
 
+    // Process monthly quantity by category
+    const categoryStats = {
+      สินค้าหลัก: { quantity: 0, value: 0 },
+      สินค้าทางเลือก: { quantity: 0, value: 0 }
+    }
+    
+    monthlyQuantityByCategory.forEach((item: { _id: string; totalQuantity: number; totalValue: number }) => {
+      if (item._id === 'สินค้าหลัก' || item._id === 'สินค้าทางเลือก') {
+        categoryStats[item._id] = {
+          quantity: item.totalQuantity || 0,
+          value: item.totalValue || 0
+        }
+      }
+    })
+
+    // Process product details by category
+    const productDetails = {
+      สินค้าหลัก: [] as { productName: string; quantity: number; value: number }[],
+      สินค้าทางเลือก: [] as { productName: string; quantity: number; value: number }[]
+    }
+    
+    monthlyProductDetails.forEach((item: { 
+      _id: { productName: string; category: string }; 
+      totalQuantity: number; 
+      totalValue: number 
+    }) => {
+      if (item._id.category === 'สินค้าหลัก' || item._id.category === 'สินค้าทางเลือก') {
+        productDetails[item._id.category].push({
+          productName: item._id.productName,
+          quantity: item.totalQuantity || 0,
+          value: item.totalValue || 0
+        })
+      }
+    })
+
     const dailySalesMap = new Map(
       dailySalesRaw.map(
         (item: { _id: { year: number; month: number; day: number }; totalAmount: number }) => {
@@ -173,8 +325,14 @@ export async function GET(request: NextRequest) {
         monthlySalesAmount: monthStats.totalAmount,
         monthlySalesCount: monthStats.count,
         totalSalesAmount: totalStats.totalAmount,
-        totalSalesCount: totalStats.count
+        totalSalesCount: totalStats.count,
+        // Monthly category statistics
+        monthlyMainProductQuantity: categoryStats.สินค้าหลัก.quantity,
+        monthlyMainProductValue: categoryStats.สินค้าหลัก.value,
+        monthlyOptionalProductQuantity: categoryStats.สินค้าทางเลือก.quantity,
+        monthlyOptionalProductValue: categoryStats.สินค้าทางเลือก.value
       },
+      productDetails,
       recentSales,
       dailySales
     }

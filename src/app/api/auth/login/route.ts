@@ -1,46 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
 import User from '../../../../../lib/models/User'
-import { comparePassword, generateToken } from '../../../../../lib/auth'
+import { comparePassword } from '../../../../../lib/auth'
+import { generateTokenPair } from '../../../../../lib/authEnhanced'
+import { authRateLimit } from '../../../../../lib/rateLimit'
+import { AuthenticationError, asyncHandler } from '../../../../../lib/errorHandler'
+import { logger, logAuthSuccess, logAuthFailure, setRequestContext } from '../../../../../lib/logger'
+import { createValidationMiddleware, loginValidationSchema } from '../../../../../lib/validationMiddleware'
+import crypto from 'crypto'
 
-export async function POST(request: NextRequest) {
+export const POST = asyncHandler(async function loginHandler(request: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResponse = authRateLimit()(request)
+  
+  if (rateLimitResponse) {
+    logAuthFailure('login_rate_limited', {
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    })
+    return rateLimitResponse
+  }
+
+  // Set request context for logging
+  const requestId = crypto.randomBytes(16).toString('hex')
+  setRequestContext({
+    requestId,
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown'
+  })
+
+  const startTime = Date.now()
+  
   try {
     await connectDB()
     
-    const { username, password } = await request.json()
+    // Validate and sanitize input
+    const validateLogin = createValidationMiddleware(loginValidationSchema)
+    const validation = await validateLogin(request)
     
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: 'Username and password are required' },
-        { status: 400 }
-      )
+    if (!validation.isValid) {
+      logAuthFailure('login_validation_failed', {
+        errors: validation.errors,
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+      })
+      throw new AuthenticationError('Invalid input: ' + validation.errors.join(', '))
     }
     
-    // Find user by username
+    const { username, password } = validation.sanitizedData
+    
+    logger.info('Login attempt', {
+      username: username,
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    })
+    
+    // Find user by username (case insensitive)
     const user = await User.findOne({ 
-      username: username.toLowerCase(),
+      username: { $regex: new RegExp(`^${username}$`, 'i') },
       isActive: true 
     })
     
     if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid username or password' },
-        { status: 401 }
-      )
+      logAuthFailure('invalid_username', { username: username })
+      throw new AuthenticationError('Invalid username or password')
     }
     
     // Check password
-    const isPasswordValid = await comparePassword(password, user.password)
+    const isPasswordValid = await comparePassword(String(password), user.password)
     
     if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: 'Invalid username or password' },
-        { status: 401 }
-      )
+      logAuthFailure('invalid_password', { 
+        userId: user._id.toString(),
+        username: username 
+      })
+      throw new AuthenticationError('Invalid username or password')
     }
     
-    // Generate JWT token
-    const token = generateToken({
+    // Generate token pair
+    const tokenPair = generateTokenPair({
       userId: user._id.toString(),
       username: user.username,
       role: user.role,
@@ -55,31 +90,47 @@ export async function POST(request: NextRequest) {
       name: user.name,
       position: user.position,
       phone: user.phone,
-      role: user.role
+      role: user.role,
+      priceLevel: user.priceLevel
     }
     
     const response = NextResponse.json({
       message: 'Login successful',
-      user: userData,
-      token
+      user: userData
     })
     
-    // Set token in HTTP-only cookie
-    response.cookies.set('token', token, {
+    // Set tokens in HTTP-only cookies
+    response.cookies.set('accessToken', tokenPair.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 24 * 60 * 60 // 24 hours
+      maxAge: 15 * 60, // 15 minutes
+      path: '/'
+    })
+    
+    response.cookies.set('refreshToken', tokenPair.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    })
+    
+    logAuthSuccess(user._id.toString(), 'login', {
+      username: user.username,
+      role: user.role,
+      tokenId: tokenPair.tokenId
+    })
+    
+    logger.logRequest('POST', '/api/auth/login', 200, Date.now() - startTime, {
+      userId: user._id.toString()
     })
     
     return response
     
   } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    logger.logRequest('POST', '/api/auth/login', error instanceof AuthenticationError ? 401 : 500, Date.now() - startTime)
+    throw error
   }
-}
+})
 

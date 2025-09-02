@@ -11,12 +11,20 @@ interface User {
   phone: string
   role: 'admin' | 'employee'
   priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ'
+  // Impersonation fields
+  isImpersonation?: boolean
+  originalAdmin?: {
+    id: string
+    name: string
+  }
 }
 
 interface AuthContextType {
   user: User | null
   token: string | null
   login: (username: string, password: string) => Promise<void>
+  loginAs: (targetUserId: string) => Promise<void>
+  exitImpersonation: () => Promise<void>
   logout: () => void
   loading: boolean
   isAuthenticated: boolean
@@ -79,6 +87,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginAs = async (targetUserId: string) => {
+    if (!targetUserId?.trim()) {
+      throw new Error('Target user ID is required')
+    }
+
+    try {
+      const response = await fetch('/api/auth/login-as', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetUserId: targetUserId.trim() }),
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Impersonation failed')
+      }
+
+      const data = await response.json()
+      setUser(data.user)
+      setToken('authenticated')
+    } catch (error) {
+      console.error('Login-as error:', error)
+      throw error
+    }
+  }
+
+  const exitImpersonation = async () => {
+    try {
+      const response = await fetch('/api/auth/exit-impersonation', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Exit impersonation failed')
+      }
+
+      const data = await response.json()
+      setUser(data.user)
+      setToken('authenticated')
+    } catch (error) {
+      console.error('Exit impersonation error:', error)
+      throw error
+    }
+  }
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -97,6 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     token,
     login,
+    loginAs,
+    exitImpersonation,
     logout,
     loading,
     isAuthenticated

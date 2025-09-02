@@ -36,7 +36,16 @@ export async function GET(request: NextRequest) {
         name: userData.name,
         position: userData.position,
         phone: userData.phone,
-        role: userData.role
+        role: userData.role,
+        priceLevel: userData.priceLevel,
+        // Include impersonation info if present
+        ...(user.isImpersonation && {
+          isImpersonation: true,
+          originalAdmin: {
+            id: user.originalAdminId,
+            name: user.originalAdminName
+          }
+        })
       }
     })
     
