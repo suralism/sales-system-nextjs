@@ -1,10 +1,12 @@
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import DailySalesChart from '@/components/DailySalesChart'
-import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/Card'
+import Card, { CardHeader, CardTitle, CardContent } from '@/components/Card'
+import toast from 'react-hot-toast'
 
 interface RecentSale {
   employeeName: string
@@ -57,9 +59,12 @@ export default function DashboardPage() {
       if (response.ok) {
         const dashboardData = await response.json()
         setData(dashboardData)
+      } else {
+        toast.error('Failed to fetch dashboard data.');
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
+      toast.error('Failed to fetch dashboard data.');
     } finally {
       setLoading(false)
     }
@@ -98,71 +103,65 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <Layout>
-        <div className="space-y-6">
+      <Layout enablePullToRefresh={true} onRefresh={fetchDashboardData}>
+        <div className="p-4 sm:p-6">
           {/* Header Section */}
-          <div className="text-center lg:text-left">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">แดชบอร์ด</h1>
-            <p className="text-gray-600 mt-2">ภาพรวมของระบบขายสินค้า</p>
+          <div className="text-center sm:text-left mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">📊 แดชบอร์ด</h1>
+            <p className="text-gray-600 mt-1">ภาพรวมของระบบขายสินค้า</p>
           </div>
 
           {/* Quick Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {/* Today Sales */}
-            <Card hover className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <CardContent>
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl">💰</span>
-                    </div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-3">
+                    <span className="text-xl">💰</span>
                   </div>
-                  <div className="ml-4 flex-1">
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-blue-700">ยอดขายวันนี้</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xl font-bold text-gray-900 mt-1">
                       {formatCurrency(data?.summary.todaySalesAmount || 0)}
                     </p>
-                    <p className="text-sm text-blue-600 mt-1">{data?.summary.todaySalesCount || 0} รายการ</p>
+                    <p className="text-xs text-blue-600 mt-1">{data?.summary.todaySalesCount || 0} รายการ</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Monthly Sales */}
-            <Card hover className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <CardContent>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl">🗓</span>
-                    </div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mr-3">
+                    <span className="text-xl">🗓</span>
                   </div>
-                  <div className="ml-4 flex-1">
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-green-700">ยอดขายเดือนนี้</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xl font-bold text-gray-900 mt-1">
                       {formatCurrency(data?.summary.monthlySalesAmount || 0)}
                     </p>
-                    <p className="text-sm text-green-600 mt-1">{data?.summary.monthlySalesCount || 0} รายการ</p>
+                    <p className="text-xs text-green-600 mt-1">{data?.summary.monthlySalesCount || 0} รายการ</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Total Sales */}
-            <Card hover className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 sm:col-span-2 lg:col-span-1">
-              <CardContent>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl">📈</span>
-                    </div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                    <span className="text-xl">📈</span>
                   </div>
-                  <div className="ml-4 flex-1">
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-purple-700">ยอดขายรวม</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xl font-bold text-gray-900 mt-1">
                       {formatCurrency(data?.summary.totalSalesAmount || 0)}
                     </p>
-                    <p className="text-sm text-purple-600 mt-1">{data?.summary.totalSalesCount || 0} รายการ</p>
+                    <p className="text-xs text-purple-600 mt-1">{data?.summary.totalSalesCount || 0} รายการ</p>
                   </div>
                 </div>
               </CardContent>
@@ -170,30 +169,30 @@ export default function DashboardPage() {
           </div>
 
           {/* Monthly Product Category Summary */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             {/* Main Products */}
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card>
               <CardHeader>
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-3">
                     <span className="text-xl">📦</span>
                   </div>
                   <div>
-                    <CardTitle size="lg" className="text-blue-900">สินค้าหลัก - เดือนนี้</CardTitle>
-                    <p className="text-sm text-blue-700 mt-1">ยอดรวมสินค้าหลักที่ขายได้</p>
+                    <CardTitle className="text-blue-900">สินค้าหลัก - เดือนนี้</CardTitle>
+                    <p className="text-sm text-blue-700">ยอดรวมสินค้าหลักที่ขายได้</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-white/60 rounded-lg">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm text-blue-700 font-medium">จำนวนชิ้น</p>
                       <p className="text-lg font-bold text-blue-900 mt-1">
                         {(data?.summary.monthlyMainProductQuantity || 0).toLocaleString('th-TH')}
                       </p>
                     </div>
-                    <div className="text-center p-3 bg-white/60 rounded-lg">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm text-blue-700 font-medium">มูลค่า</p>
                       <p className="text-lg font-bold text-blue-900 mt-1">
                         {formatCurrency(data?.summary.monthlyMainProductValue || 0)}
@@ -203,11 +202,11 @@ export default function DashboardPage() {
                   
                   {/* Product Details */}
                   {data?.productDetails.สินค้าหลัก && data.productDetails.สินค้าหลัก.length > 0 && (
-                    <div className="pt-4 border-t border-blue-200">
+                    <div className="pt-4 border-t border-blue-200 mt-4">
                       <h4 className="text-sm font-semibold text-blue-900 mb-3">รายละเอียดสินค้า</h4>
                       <div className="space-y-2 max-h-40 overflow-y-auto">
                         {data.productDetails.สินค้าหลัก.map((product, index) => (
-                          <div key={index} className="flex justify-between items-center p-2 bg-white/40 rounded-lg">
+                          <div key={index} className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
                             <span className="text-sm text-blue-800 font-medium truncate flex-1 mr-2">{product.productName}</span>
                             <span className="text-sm font-bold text-blue-900 bg-blue-200 px-2 py-1 rounded">
                               {product.quantity.toLocaleString('th-TH')} ชิ้น
@@ -222,28 +221,28 @@ export default function DashboardPage() {
             </Card>
 
             {/* Optional Products */}
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card>
               <CardHeader>
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
                     <span className="text-xl">🎯</span>
                   </div>
                   <div>
-                    <CardTitle size="lg" className="text-purple-900">สินค้าทางเลือก - เดือนนี้</CardTitle>
-                    <p className="text-sm text-purple-700 mt-1">ยอดรวมสินค้าทางเลือกที่ขายได้</p>
+                    <CardTitle className="text-purple-900">สินค้าทางเลือก - เดือนนี้</CardTitle>
+                    <p className="text-sm text-purple-700">ยอดรวมสินค้าทางเลือกที่ขายได้</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-white/60 rounded-lg">
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
                       <p className="text-sm text-purple-700 font-medium">จำนวนชิ้น</p>
                       <p className="text-lg font-bold text-purple-900 mt-1">
                         {(data?.summary.monthlyOptionalProductQuantity || 0).toLocaleString('th-TH')}
                       </p>
                     </div>
-                    <div className="text-center p-3 bg-white/60 rounded-lg">
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
                       <p className="text-sm text-purple-700 font-medium">มูลค่า</p>
                       <p className="text-lg font-bold text-purple-900 mt-1">
                         {formatCurrency(data?.summary.monthlyOptionalProductValue || 0)}
@@ -253,11 +252,11 @@ export default function DashboardPage() {
                   
                   {/* Product Details */}
                   {data?.productDetails.สินค้าทางเลือก && data.productDetails.สินค้าทางเลือก.length > 0 && (
-                    <div className="pt-4 border-t border-purple-200">
+                    <div className="pt-4 border-t border-purple-200 mt-4">
                       <h4 className="text-sm font-semibold text-purple-900 mb-3">รายละเอียดสินค้า</h4>
                       <div className="space-y-2 max-h-40 overflow-y-auto">
                         {data.productDetails.สินค้าทางเลือก.map((product, index) => (
-                          <div key={index} className="flex justify-between items-center p-2 bg-white/40 rounded-lg">
+                          <div key={index} className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
                             <span className="text-sm text-purple-800 font-medium truncate flex-1 mr-2">{product.productName}</span>
                             <span className="text-sm font-bold text-purple-900 bg-purple-200 px-2 py-1 rounded">
                               {product.quantity.toLocaleString('th-TH')} ชิ้น
@@ -273,7 +272,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Activity and Charts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
             {/* Recent Sales */}
             <Card>
               <CardHeader>
@@ -284,7 +283,7 @@ export default function DashboardPage() {
                   <CardTitle>การขายล่าสุด</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 {data?.recentSales && data.recentSales.length > 0 ? (
                   <div className="space-y-3">
                     {data.recentSales.map((sale, index) => (
@@ -334,7 +333,7 @@ export default function DashboardPage() {
                   <CardTitle>ยอดขายรายวัน</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <div className="h-64 flex items-center justify-center">
                   <DailySalesChart data={data?.dailySales || []} />
                 </div>
@@ -346,4 +345,5 @@ export default function DashboardPage() {
     </ProtectedRoute>
   )
 }
+
 

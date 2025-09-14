@@ -1,12 +1,11 @@
+
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
-import Button from '@/components/Button'
-import { Input, Select } from '@/components/Form'
-import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/Card'
+import { Form } from '@/components/Form'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -199,372 +198,210 @@ export default function EmployeesPage() {
   return (
     <ProtectedRoute requiredRole="admin">
       <Layout enablePullToRefresh={true} onRefresh={fetchEmployees}>
-        <div className="space-y-6">
-          {/* Header Section */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👥 จัดการพนักงาน</h1>
-              <p className="text-gray-600 mt-1">เพิ่ม แก้ไข และจัดการข้อมูลพนักงาน</p>
-            </div>
-            <Button
+        <div className="p-4 sm:p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">👥 จัดการพนักงาน</h1>
+          <p className="text-gray-600 mb-6">เพิ่ม แก้ไข และจัดการข้อมูลพนักงาน</p>
+
+          <div className="flex justify-end mb-4">
+            <button
               onClick={() => {
                 resetForm()
                 setShowModal(true)
               }}
-              size="lg"
-              leftIcon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              }
+              className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
             >
-              เพิ่มพนักงานใหม่
-            </Button>
+              + เพิ่มพนักงานใหม่
+            </button>
           </div>
 
-          {/* Employees Display */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mr-3">
-                  <span className="text-xl">👥</span>
-                </div>
-                <CardTitle>รายการพนักงาน</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Mobile View - Card Layout */}
-              <div className="block lg:hidden">
-                <div className="space-y-3 p-4">
-                  {employees.map((employee) => (
-                    <Card key={employee._id} className="bg-gray-50 border border-gray-200 hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          {/* Header Row */}
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900">{employee.name}</h4>
-                              <p className="text-sm text-gray-500 mt-1">@{employee.username}</p>
-                              <p className="text-sm text-gray-600 mt-1">{employee.position}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
-                                employee.role === 'admin' 
-                                  ? 'bg-purple-100 text-purple-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {employee.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Price Level & Contact */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white rounded-lg p-3 border">
-                              <p className="text-sm text-gray-500">ระดับราคา</p>
-                              <p className="font-medium text-gray-900">{employee.priceLevel}</p>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 border">
-                              <p className="text-sm text-gray-500">เบอร์ติดต่อ</p>
-                              <p className="font-medium text-gray-900">{employee.phone}</p>
-                            </div>
-                          </div>
-                          
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 pt-2 border-t border-gray-200">
-                            {employee.role === 'employee' && (
-                              <Button
-                                onClick={() => handleLoginAs(employee)}
-                                variant="success"
-                                size="sm"
-                                fullWidth
-                                leftIcon={
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                }
-                              >
-                                ดูข้อมูล
-                              </Button>
-                            )}
-                            <Button
-                              onClick={() => handleEdit(employee)}
-                              variant="secondary"
-                              size="sm"
-                              fullWidth
-                              leftIcon={
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              }
-                            >
-                              แก้ไข
-                            </Button>
-                            <Button
-                              onClick={() => handleDelete(employee._id)}
-                              variant="danger"
-                              size="sm"
-                              fullWidth
-                              leftIcon={
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              }
-                            >
-                              ลบ
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Desktop View - Table Layout */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ข้อมูลพนักงาน
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ตำแหน่ง
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ระดับราคา
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        สิทธิ์
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        การจัดการ
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {employees.map((employee) => (
-                      <tr key={employee._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                            <div className="text-sm text-gray-500">@{employee.username}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.position}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.priceLevel}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            employee.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {employee.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                          {employee.role === 'employee' && (
-                            <button
-                              onClick={() => handleLoginAs(employee)}
-                              className="text-green-600 hover:text-green-900"
-                              title="เข้าดูข้อมูลในฐานะพนักงาน"
-                            >
-                              ดูข้อมูล
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleEdit(employee)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            แก้ไข
-                          </button>
-                          <button
-                            onClick={() => handleDelete(employee._id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            ลบ
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
-
-          {/* Enhanced Mobile-Friendly Modal */}
-          {showModal && (
-            <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm overflow-y-auto h-full w-full z-50 p-4">
-              <div className="relative min-h-screen flex items-center justify-center">
-                <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle size="xl">
-                        {editingEmployee ? '📝 แก้ไขข้อมูลพนักงาน' : '➕ เพิ่มพนักงานใหม่'}
-                      </CardTitle>
-                      <Button
-                        onClick={() => setShowModal(false)}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </Button>
+          {employees.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+              ยังไม่มีพนักงานในระบบ
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {employees.map((employee) => (
+                <div key={employee._id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
+                      <p className="text-sm text-gray-600">@{employee.username}</p>
+                      <p className="text-sm text-gray-600">{employee.position}</p>
                     </div>
-                  </CardHeader>
-                  
-                  <CardContent className="max-h-[70vh] overflow-y-auto p-6">
-                    <form onSubmit={handleSubmit}>
-                      <div className="space-y-6">
-                        {/* Basic Information */}
-                        <div className="space-y-4">
-                          <div className="border-b border-gray-200 pb-2">
-                            <h3 className="text-lg font-medium text-gray-900">ข้อมูลพื้นฐาน</h3>
-                            <p className="text-sm text-gray-600 mt-1">ข้อมูลติดต่อและผู้ใช้งาน</p>
-                          </div>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <Input
-                                label="ชื่อผู้ใช้ *"
-                                type="text"
-                                value={formData.username}
-                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                placeholder="กรอกชื่อผู้ใช้"
-                                disabled={!!editingEmployee}
-                                required
-                                fullWidth
-                              />
-                              
-                              <Input
-                                label="อีเมล *"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                placeholder="example@company.com"
-                                required
-                                fullWidth
-                              />
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <Input
-                                label="ชื่อ-นามสกุล *"
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="กรอกชื่อและนามสกุล"
-                                required
-                                fullWidth
-                              />
-                              
-                              <Input
-                                label="ตำแหน่ง *"
-                                type="text"
-                                value={formData.position}
-                                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                                placeholder="เช่น พนักงานขาย"
-                                required
-                                fullWidth
-                              />
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <Input
-                                label="เบอร์โทรศัพท์ *"
-                                type="tel"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                placeholder="08x-xxx-xxxx"
-                                required
-                                fullWidth
-                              />
-                              
-                              <Input
-                                label={`รหัสผ่าน ${editingEmployee ? '(เว้นว่างหากไม่ต้องการเปลี่ยน)' : '*'}`}
-                                type="password"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                placeholder="กรอกรหัสผ่าน"
-                                required={!editingEmployee}
-                                fullWidth
-                              />
-                            </div>
-                          </div>
-                        </div>
+                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      employee.role === 'admin' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {employee.role === 'admin' ? 'ผู้จัดการ' : 'พนักงาน'}
+                    </span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <p className="text-sm font-medium text-gray-700">ระดับราคา: <span className="font-normal">{employee.priceLevel}</span></p>
+                    <p className="text-sm font-medium text-gray-700">เบอร์ติดต่อ: <span className="font-normal">{employee.phone}</span></p>
+                  </div>
+                  <div className="flex space-x-2 mt-4">
+                    {employee.role === 'employee' && (
+                      <button
+                        onClick={() => handleLoginAs(employee)}
+                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                      >
+                        ดูข้อมูล
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEdit(employee)}
+                      className="flex-1 bg-yellow-500 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors"
+                    >
+                      แก้ไข
+                    </button>
+                    <button
+                      onClick={() => handleDelete(employee._id)}
+                      className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                    >
+                      ลบ
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-                        {/* Permissions & Settings */}
-                        <div className="space-y-4">
-                          <div className="border-b border-gray-200 pb-2">
-                            <h3 className="text-lg font-medium text-gray-900">สิทธิ์และการตั้งค่า</h3>
-                            <p className="text-sm text-gray-600 mt-1">กำหนดสิทธิ์การใช้งานและระดับราคา</p>
-                          </div>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <Select
-                                label="สิทธิ์การใช้งาน *"
-                                value={formData.role}
-                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, role: e.target.value as 'admin' | 'employee' })}
-                                options={[
-                                  { value: 'employee', label: 'พนักงาน' },
-                                  { value: 'admin', label: 'ผู้จัดการ' }
-                                ]}
-                                required
-                                fullWidth
-                              />
-                              
-                              <Select
-                                label="ระดับราคา *"
-                                value={formData.priceLevel}
-                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, priceLevel: e.target.value as Employee['priceLevel'] })}
-                                options={priceLevels.map(level => ({ value: level, label: level }))}
-                                required
-                                fullWidth
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </form>
-                  </CardContent>
-                  
-                  <CardFooter>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full">
-                      <Button
-                        onClick={() => setShowModal(false)}
-                        variant="secondary"
-                        size="lg"
-                        fullWidth
-                        className="sm:w-auto"
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              total={total}
+              limit={limit}
+              onPageChange={setPage}
+            />
+          </div>
+
+          {/* Add/Edit Employee Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{editingEmployee ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงานใหม่'}</h2>
+                <Form onSubmit={handleSubmit}>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ใช้</label>
+                      <input
+                        id="username"
+                        type="text"
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
+                      <input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน {editingEmployee && '(เว้นว่างหากไม่ต้องการเปลี่ยน)'}</label>
+                      <input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        {...(!editingEmployee && { required: true })}
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
+                      <input
+                        id="name"
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">ตำแหน่ง</label>
+                      <input
+                        id="position"
+                        type="text"
+                        value={formData.position}
+                        onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">สิทธิ์การใช้งาน</label>
+                      <select
+                        id="role"
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'employee' })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      >
+                        <option value="employee">พนักงาน</option>
+                        <option value="admin">ผู้จัดการ</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="priceLevel" className="block text-sm font-medium text-gray-700 mb-1">ระดับราคา</label>
+                      <select
+                        id="priceLevel"
+                        value={formData.priceLevel}
+                        onChange={(e) => setFormData({ ...formData, priceLevel: e.target.value as Employee['priceLevel'] })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      >
+                        {priceLevels.map(level => (
+                          <option key={level} value={level}>{level}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => { setShowModal(false); resetForm() }}
+                        className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                       >
                         ยกเลิก
-                      </Button>
-                      <Button
+                      </button>
+                      <button
                         type="submit"
-                        onClick={(e: any) => handleSubmit(e)}
-                        isLoading={submitting}
-                        size="lg"
-                        fullWidth
-                        className="sm:w-auto"
-                        leftIcon={
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        }
+                        disabled={submitting}
+                        className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {editingEmployee ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
-                      </Button>
+                        {submitting ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            กำลังบันทึก...
+                          </div>
+                        ) : (
+                          editingEmployee ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'
+                        )}
+                      </button>
                     </div>
-                  </CardFooter>
-                </Card>
+                  </div>
+                </Form>
               </div>
             </div>
           )}
@@ -573,4 +410,5 @@ export default function EmployeesPage() {
     </ProtectedRoute>
   )
 }
+
 
