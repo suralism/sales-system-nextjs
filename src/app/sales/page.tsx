@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
@@ -6,9 +7,7 @@ import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
-import Button from '@/components/Button'
-import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/Card'
-import { Input, Select, Textarea, Form, FormGroup } from '@/components/Form'
+import { Form } from '@/components/Form'
 
 interface Price {
   level: string;
@@ -67,17 +66,7 @@ export default function SalesPage() {
   const [total, setTotal] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedProductIndex, setSelectedProductIndex] = useState(-1)
-  const [detailSale, setDetailSale] = useState<Sale | null>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // New states for quantity input modal
-  const [showQuantityModal, setShowQuantityModal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [quantityInput, setQuantityInput] = useState('')
-  const quantityInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -86,64 +75,10 @@ export default function SalesPage() {
     notes: ''
   })
 
-  const selectedEmployee = useMemo(() => {
-    return employees.find(e => e._id === formData.employeeId);
-  }, [formData.employeeId, employees]);
-
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm) return []
-    return products.filter(p =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [searchTerm, products])
-
-  useEffect(() => {
-    setSelectedProductIndex(-1)
-  }, [searchTerm])
-
-  const detailSummary = useMemo(() => {
-    if (!detailSale) return null
-    const totalWithdrawn = detailSale.items.reduce(
-      (sum, item) => sum + (Number(item.withdrawal) || 0),
-      0
-    )
-    const totalAmount = detailSale.items.reduce(
-      (sum, item) => sum + item.pricePerUnit * (Number(item.withdrawal) || 0),
-      0
-    )
-    const totalReturn = detailSale.items.reduce(
-      (sum, item) => sum + (Number(item.return) || 0),
-      0
-    )
-    const totalDefective = detailSale.items.reduce(
-      (sum, item) => sum + (Number(item.defective) || 0),
-      0
-    )
-    const totalSold = detailSale.items.reduce(
-      (sum, item) =>
-        sum + (Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0),
-      0
-    )
-    const totalSoldAmount = detailSale.items.reduce(
-      (sum, item) =>
-        sum + ((Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)) * item.pricePerUnit,
-      0
-    )
-    return {
-      totalWithdrawn,
-      totalAmount,
-      totalReturn,
-      totalDefective,
-      totalSold,
-      totalSoldAmount
-    }
-  }, [detailSale])
-
   const fetchData = useCallback(async () => {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
         fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include' }),
-        // Fetch all products to ensure search can find every item
         fetch('/api/products?limit=1000', { credentials: 'include' }),
         fetch('/api/users', { credentials: 'include' })
       ])
@@ -235,108 +170,7 @@ export default function SalesPage() {
       items: [],
       notes: ''
     })
-    setSearchTerm('')
     setEditingSaleId(null)
-  }
-
-  const addProductToForm = (product: Product) => {
-    if (!selectedEmployee) {
-        toast.error("Please select an employee first.");
-        return;
-    }
-
-    if (!product.prices || product.prices.length === 0) {
-        toast.error('This product needs its price levels updated before it can be sold.');
-        return;
-    }
-
-    const priceInfo = product.prices.find(p => p.level === selectedEmployee.priceLevel);
-    if (!priceInfo) {
-        toast.error(`Price for level ${selectedEmployee.priceLevel} not found for this product.`);
-        return;
-    }
-
-    // Show quantity modal instead of directly adding to form
-    setSelectedProduct(product)
-    setQuantityInput('1')
-    setShowQuantityModal(true)
-    setSearchTerm('')
-    
-    // Focus on quantity input after modal opens
-    setTimeout(() => {
-      quantityInputRef.current?.focus()
-      quantityInputRef.current?.select()
-    }, 100)
-  }
-
-  const confirmQuantityAndAddProduct = () => {
-    if (!selectedProduct || !selectedEmployee) return
-    
-    const quantity = parseInt(quantityInput, 10)
-    if (isNaN(quantity) || quantity <= 0) {
-      toast.error('กรุณากรอกจำนวนที่ถูกต้อง')
-      quantityInputRef.current?.focus()
-      return
-    }
-
-    const priceInfo = selectedProduct.prices.find(p => p.level === selectedEmployee.priceLevel);
-    if (!priceInfo) {
-        toast.error(`Price for level ${selectedEmployee.priceLevel} not found for this product.`);
-        return;
-    }
-
-    const existingIndex = formData.items.findIndex(item => item.productId === selectedProduct._id)
-    if (existingIndex >= 0) {
-      const updatedItems = [...formData.items]
-      updatedItems[existingIndex].withdrawal = (Number(updatedItems[existingIndex].withdrawal) || 0) + quantity
-      setFormData({ ...formData, items: updatedItems })
-      toast.success(`เพิ่มจำนวน ${selectedProduct.name} จำนวน ${quantity} ชิ้น`)
-    } else {
-      const newItem: SaleItem = {
-        productId: selectedProduct._id,
-        productName: selectedProduct.name,
-        pricePerUnit: priceInfo.value,
-        withdrawal: quantity,
-        return: 0,
-        defective: 0
-      }
-      setFormData({ ...formData, items: [...formData.items, newItem] })
-      toast.success(`เพิ่มสินค้า ${selectedProduct.name} จำนวน ${quantity} ชิ้น`)
-    }
-    
-    // Close modal and reset
-    setShowQuantityModal(false)
-    setSelectedProduct(null)
-    setQuantityInput('')
-    searchInputRef.current?.focus()
-  }
-
-  const cancelQuantityInput = () => {
-    setShowQuantityModal(false)
-    setSelectedProduct(null)
-    setQuantityInput('')
-    searchInputRef.current?.focus()
-  }
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!filteredProducts.length) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedProductIndex(prev => {
-        const next = prev + 1
-        return next >= filteredProducts.length ? 0 : next
-      })
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedProductIndex(prev => {
-        if (prev === -1) return filteredProducts.length - 1
-        return prev === 0 ? filteredProducts.length - 1 : prev - 1
-      })
-    } else if (e.key === 'Enter' && selectedProductIndex >= 0) {
-      e.preventDefault()
-      addProductToForm(filteredProducts[selectedProductIndex])
-    }
   }
 
   const removeItem = (index: number) => {
@@ -347,25 +181,34 @@ export default function SalesPage() {
   const updateItem = (index: number, field: keyof SaleItem, value: string) => {
     const newItems = [...formData.items]
     const item = newItems[index]
-    if (field === 'withdrawal' || field === 'return' || field === 'defective') {
-      ;(item[field] as number | '') = value === '' ? '' : parseInt(value, 10)
+    if (field === 'productId') {
+        const product = products.find(p => p._id === value);
+        if (product) {
+            item.productId = product._id;
+            item.productName = product.name;
+            const employee = employees.find(e => e._id === formData.employeeId);
+            if (employee) {
+                const priceInfo = product.prices.find(p => p.level === employee.priceLevel);
+                item.pricePerUnit = priceInfo ? priceInfo.value : 0;
+            }
+        }
+    } else if (field === 'withdrawal' || field === 'return' || field === 'defective') {
+      (item[field] as number | '') = value === '' ? '' : parseInt(value, 10)
     }
     setFormData({ ...formData, items: newItems })
   }
 
-  const { totalAmount, totalItems } = useMemo(() => {
+  const { totalAmount } = useMemo(() => {
     let amount = 0
-    let items = 0
     formData.items.forEach(item => {
       const w = Number(item.withdrawal) || 0
       const r = Number(item.return) || 0
       const d = Number(item.defective) || 0
       const netQuantity = w - r - d
       amount += netQuantity * item.pricePerUnit
-      items += netQuantity
     })
-    return { totalAmount: amount, totalItems: items }
-  }, [formData.items])
+    return { totalAmount: amount }
+  }, [formData.items, products, employees, formData.employeeId])
 
   const handleDelete = async (saleId: string) => {
     if (window.confirm('Are you sure you want to delete this sale?')) {
@@ -416,12 +259,6 @@ export default function SalesPage() {
     }).format(amount)
   }
 
-  const getPriceForEmployee = (product: Product, employee: Employee | undefined) => {
-      if (!employee || !product.prices) return 0;
-      const priceInfo = product.prices.find(p => p.level === employee.priceLevel);
-      return priceInfo ? priceInfo.value : 0;
-  }
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('th-TH', {
       year: 'numeric',
@@ -432,748 +269,243 @@ export default function SalesPage() {
     })
   }
 
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <Layout>
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        </Layout>
-      </ProtectedRoute>
-    )
-  }
-
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="employee">
       <Layout>
-        <div className="space-y-6">
-          {/* Header Section */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">บันทึกการเบิก</h1>
-              <p className="text-gray-600 mt-1">บันทึกการเบิกสินค้า (คืน/เคลมใส่ตอนเคลียบิล)</p>
-            </div>
-            <Button
+        <div className="p-4 sm:p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">บันทึกการเบิก</h1>
+          <p className="text-gray-600 mb-6">บันทึกการเบิกสินค้า (คืน/เคลมใส่ตอนเคลียบิล)</p>
+
+          <div className="flex justify-end mb-4">
+            <button
               onClick={() => {
-                resetForm()
-                setShowModal(true)
+                resetForm();
+                setShowModal(true);
               }}
-              size="lg"
-              leftIcon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              }
+              className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
             >
-              บันทึกการเบิกใหม่
-            </Button>
+              + บันทึกการเบิกใหม่
+            </button>
           </div>
 
-          {/* Sales History */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
-                  <span className="text-xl">📋</span>
-                </div>
-                <CardTitle>ประวัติการเบิก</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Mobile View - Card Layout */}
-              <div className="block lg:hidden">
-                <div className="space-y-3 p-4">
-                  {sales.map((sale) => (
-                    <Card key={sale._id} className="bg-gray-50 border border-gray-200 hover:shadow-md transition-shadow">
-                      <CardContent>
-                        <div className="space-y-3">
-                          {/* Header Row */}
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-semibold text-gray-900">{sale.employeeName}</p>
-                              <p className="text-sm text-gray-500">{formatDate(sale.saleDate)}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
-                                sale.type === 'เบิก' 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {sale.type}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Amount and Status */}
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-lg font-bold text-gray-900">{formatCurrency(sale.totalAmount)}</p>
-                              <button
-                                onClick={() => setDetailSale(sale)}
-                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                              >
-                                📄 ดูรายละเอียด
-                              </button>
-                            </div>
-                            <div className="text-right">
-                              <span className={`text-sm font-medium ${
-                                sale.settled ? 'text-green-600' : 'text-yellow-600'
-                              }`}>
-                                {sale.settled ? 'เคลียบิลแล้ว' : 'รอเคลียบิล'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Action Buttons */}
-                          {((user?.role === 'admin' || user?.id === sale.employeeId) && !sale.settled) || user?.role === 'admin' ? (
-                            <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200">
-                              {(user?.role === 'admin' || user?.id === sale.employeeId) && !sale.settled && (
-                                <Button
-                                  onClick={() => handleEdit(sale)}
-                                  variant="secondary"
-                                  size="sm"
-                                >
-                                  แก้ไข
-                                </Button>
-                              )}
-                              {user?.role === 'admin' && (
-                                <Button
-                                  onClick={() => handleDelete(sale._id)}
-                                  variant="danger"
-                                  size="sm"
-                                >
-                                  ลบ
-                                </Button>
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Desktop View - Table Layout */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        วันที่
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        พนักงาน
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ประเภท
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        รายการ
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ยอดรวม
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        สถานะ
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        จัดการ
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {sales.map((sale) => (
-                      <tr key={sale._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(sale.saleDate)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {sale.employeeName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            sale.type === 'เบิก' 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {sale.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-blue-600">
-                          <button
-                            onClick={() => setDetailSale(sale)}
-                            className="hover:underline"
-                          >
-                            รายละเอียด
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {formatCurrency(sale.totalAmount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {sale.settled ? (
-                            <span className="text-green-600">เคลียบิลแล้ว</span>
-                          ) : (
-                            <span className="text-yellow-600">รอเคลียบิล</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                          {(user?.role === 'admin' || user?.id === sale.employeeId) && !sale.settled && (
-                            <button
-                              onClick={() => handleEdit(sale)}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          {user?.role === 'admin' && (
-                            <button
-                              onClick={() => handleDelete(sale._id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
-
-          {/* Enhanced Mobile-Friendly Modal */}
-          {showModal && (
-            <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm overflow-y-auto h-full w-full z-50 p-4 pb-24 lg:pb-4">
-              <div className="relative min-h-screen flex items-center justify-center py-8">
-                <Card className="w-full max-w-4xl max-h-[80vh] lg:max-h-[90vh] overflow-hidden">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle size="xl">
-                        {editingSaleId ? '📝 แก้ไขการเบิก' : '📝 บันทึกการเบิกใหม่'}
-                      </CardTitle>
-                      <Button
-                        onClick={() => setShowModal(false)}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="max-h-[45vh] lg:max-h-[60vh] overflow-y-auto">
-                    <Form onSubmit={handleSubmit}>
-                      <div className="space-y-6">
-                        {/* Employee Selection */}
-                        <FormGroup title="ข้อมูลพนักงาน" description="เลือกพนักงานที่จะทำการเบิก">
-                          <Select
-                            label="พนักงาน *"
-                            value={formData.employeeId}
-                            onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                            options={[
-                              { value: '', label: 'เลือกพนักงาน' },
-                              ...employees.map(emp => ({ value: emp._id, label: emp.name }))
-                            ]}
-                            disabled={!!editingSaleId || user?.role === 'employee'}
-                            fullWidth
-                            placeholder="เลือกพนักงาน"
-                          />
-                        </FormGroup>
-
-                        {/* Product Search */}
-                        <FormGroup title="เพิ่มสินค้า" description="ค้นหาและเลือกสินค้าที่ต้องการเบิก">
-                          <div className="relative">
-                            <Input
-                              label="ค้นหาสินค้า"
-                              type="text"
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              onKeyDown={handleSearchKeyDown}
-                              ref={searchInputRef}
-                              placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา..."
-                              leftIcon={
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                              }
-                              fullWidth
-                            />
-                            {filteredProducts.length > 0 && (
-                              <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-xl mt-1 max-h-60 overflow-y-auto shadow-lg">
-                                {filteredProducts.map((p, index) => (
-                                  <button
-                                    key={p._id}
-                                    type="button"
-                                    onClick={() => addProductToForm(p)}
-                                    className={`w-full text-left px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-b-0 ${
-                                      index === selectedProductIndex ? 'bg-blue-100' : ''
-                                    }`}
-                                  >
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-medium text-gray-900">{p.name}</span>
-                                      <span className="text-sm text-gray-600">
-                                        {formatCurrency(getPriceForEmployee(p, selectedEmployee))}
-                                      </span>
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </FormGroup>
-
-                        {/* Products List */}
-                        {formData.items.length > 0 && (
-                          <FormGroup title="รายการสินค้า" description="สินค้าที่เลือกไว้สำหรับการเบิก">
-                            {/* Mobile Product Cards */}
-                            <div className="block lg:hidden space-y-3">
-                              {formData.items.map((item, index) => (
-                                <Card key={item.productId} className="bg-gray-50 border border-gray-200">
-                                  <CardContent>
-                                    <div className="space-y-3">
-                                      <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                          <h4 className="font-medium text-gray-900">{item.productName}</h4>
-                                          <p className="text-sm text-gray-600">ราคา: {formatCurrency(item.pricePerUnit)}</p>
-                                        </div>
-                                        <Button
-                                          type="button"
-                                          onClick={() => removeItem(index)}
-                                          variant="danger"
-                                          size="sm"
-                                        >
-                                          ลบ
-                                        </Button>
-                                      </div>
-                                      
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                          จำนวนเบิก
-                                        </label>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          value={item.withdrawal === '' ? '' : item.withdrawal}
-                                          onChange={e => updateItem(index, 'withdrawal', e.target.value)}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          placeholder="0"
-                                        />
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                            
-                            {/* Desktop Table */}
-                            <div className="hidden lg:block overflow-x-auto">
-                              <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No.</th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">สินค้า</th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ราคา</th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">เบิก</th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"></th>
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                  {formData.items.map((item, index) => (
-                                    <tr key={item.productId}>
-                                      <td className="px-4 py-2 whitespace-nowrap">{index + 1}</td>
-                                      <td className="px-4 py-2 whitespace-nowrap">{item.productName}</td>
-                                      <td className="px-4 py-2 whitespace-nowrap">{formatCurrency(item.pricePerUnit)}</td>
-                                      <td className="px-4 py-2">
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          value={item.withdrawal === '' ? '' : item.withdrawal}
-                                          onChange={e => updateItem(index, 'withdrawal', e.target.value)}
-                                          className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                      </td>
-                                      <td className="px-4 py-2">
-                                        <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700">ลบ</button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </FormGroup>
-                        )}
-
-                        {/* Notes */}
-                        <FormGroup title="หมายเหตุ" description="เพิ่มข้อมูลเพิ่มเติม (เลือกได้)">
-                          <Textarea
-                            label="หมายเหตุ"
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            placeholder="เพิ่มหมายเหตุ (ถ้ามี)"
-                            rows={3}
-                            fullWidth
-                          />
-                        </FormGroup>
-                      </div>
-                    </Form>
-                  </CardContent>
-
-                  <CardFooter className="sticky bottom-0 bg-white border-t border-gray-200 rounded-b-xl z-20 p-4 lg:p-6">
-                    {/* Summary */}
-                    <div className="w-full">
-                      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 mb-4">
-                        <CardContent>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
-                            <div>
-                              <p className="text-sm font-medium text-blue-700">ยอดรวม</p>
-                              <p className="text-2xl font-bold text-blue-900">{formatCurrency(totalAmount)}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-blue-700">จำนวนชิ้นทั้งหมด</p>
-                              <p className="text-2xl font-bold text-blue-900">{totalItems}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 bg-white border-t border-gray-100">
-                        <Button
-                          type="button"
-                          onClick={() => setShowModal(false)}
-                          variant="secondary"
-                          size="lg"
-                          fullWidth
-                          className="sm:w-auto min-h-[52px] touch-manipulation font-medium"
-                        >
-                          ยกเลิก
-                        </Button>
-                        <Button
-                          onClick={handleSubmit}
-                          isLoading={isSubmitting}
-                          size="lg"
-                          fullWidth
-                          className="sm:w-auto min-h-[52px] touch-manipulation font-medium"
-                          disabled={formData.items.length === 0}
-                        >
-                          {editingSaleId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการเบิก'}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          )}
-          {/* Enhanced Mobile-Friendly Detail Modal */}
-          {detailSale && detailSummary && (
-            <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm overflow-y-auto h-full w-full z-50 p-4 pb-24 lg:pb-4">
-              <div className="relative min-h-screen flex items-center justify-center py-8">
-                <Card className="w-full max-w-4xl max-h-[85vh] lg:max-h-[90vh] overflow-hidden">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>📄 รายละเอียดการเบิก</CardTitle>
-                        <p className="text-gray-600 mt-1">{detailSale.employeeName}</p>
-                      </div>
-                      <Button
-                        onClick={() => setDetailSale(null)}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="max-h-[55vh] lg:max-h-[60vh] overflow-y-auto">
-                    {/* Mobile Cards View */}
-                    <div className="block lg:hidden space-y-3">
-                      {detailSale.items.map((item, index) => {
-                        const sold = detailSale.settled 
-                          ? (Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)
-                          : (Number(item.withdrawal) || 0)
-                        
-                        return (
-                          <Card key={index} className="bg-gray-50">
-                            <CardContent>
-                              <div className="space-y-3">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-900">{item.productName}</h4>
-                                    <p className="text-sm text-gray-600">ราคา: {formatCurrency(item.pricePerUnit)}</p>
-                                  </div>
-                                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                                    #{index + 1}
-                                  </span>
-                                </div>
-                                
-                                {detailSale.settled ? (
-                                  <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div className="text-center p-2 bg-blue-100 rounded">
-                                      <p className="text-blue-700 font-medium">เบิก</p>
-                                      <p className="text-blue-900 font-bold">{item.withdrawal}</p>
-                                    </div>
-                                    <div className="text-center p-2 bg-green-100 rounded">
-                                      <p className="text-green-700 font-medium">คืน</p>
-                                      <p className="text-green-900 font-bold">{item.return}</p>
-                                    </div>
-                                    <div className="text-center p-2 bg-red-100 rounded">
-                                      <p className="text-red-700 font-medium">เสีย</p>
-                                      <p className="text-red-900 font-bold">{item.defective}</p>
-                                    </div>
-                                    <div className="text-center p-2 bg-purple-100 rounded">
-                                      <p className="text-purple-700 font-medium">ขายได้</p>
-                                      <p className="text-purple-900 font-bold">{sold}</p>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="text-center p-3 bg-blue-100 rounded">
-                                      <p className="text-blue-700 font-medium">เบิก</p>
-                                      <p className="text-blue-900 font-bold text-lg">{item.withdrawal}</p>
-                                    </div>
-                                    <div className="text-center p-3 bg-green-100 rounded">
-                                      <p className="text-green-700 font-medium">รวมราคา</p>
-                                      <p className="text-green-900 font-bold text-lg">
-                                        {formatCurrency((Number(item.withdrawal) || 0) * item.pricePerUnit)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {detailSale.settled && (
-                                  <div className="pt-2 border-t border-gray-200">
-                                    <div className="text-center">
-                                      <p className="text-sm text-gray-600">มูลค่าขายได้</p>
-                                      <p className="text-lg font-bold text-gray-900">
-                                        {formatCurrency(sold * item.pricePerUnit)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
-                    </div>
-                    
-                    {/* Desktop Table View */}
-                    <div className="hidden lg:block">
-                      {detailSale.settled ? (
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-2 text-left font-medium text-gray-500">No.</th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {detailSale.items.map((item, index) => {
-                              const sold = (Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)
-                              return (
-                                <tr key={index}>
-                                  <td className="px-4 py-2">{index + 1}</td>
-                                  <td className="px-4 py-2">{item.productName}</td>
-                                  <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                                  <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                                  <td className="px-4 py-2 text-right">{item.return}</td>
-                                  <td className="px-4 py-2 text-right">{item.defective}</td>
-                                  <td className="px-4 py-2 text-right">{sold}</td>
-                                  <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-2 text-left font-medium text-gray-500">No.</th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {detailSale.items.map((item, index) => (
-                              <tr key={index}>
-                                <td className="px-4 py-2">{index + 1}</td>
-                                <td className="px-4 py-2">{item.productName}</td>
-                                <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                                <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                                <td className="px-4 py-2 text-right">{formatCurrency((Number(item.withdrawal) || 0) * item.pricePerUnit)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  </CardContent>
-                  
-                  <CardFooter className="sticky bottom-0 bg-white border-t border-gray-200 rounded-b-xl z-10">
-                    <div className="w-full">
-                      {/* Summary Card */}
-                      <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 mb-4">
-                        <CardContent>
-                          {detailSale.settled ? (
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">ยอดขายรวม</p>
-                                <p className="text-lg font-bold text-indigo-900">{formatCurrency(detailSummary.totalSoldAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">ยอดนำส่ง</p>
-                                <p className="text-lg font-bold text-indigo-900">
-                                  {formatCurrency((detailSale.cashAmount || 0) + (detailSale.transferAmount || 0))}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">ขายได้</p>
-                                <p className="text-lg font-bold text-indigo-900">{detailSummary.totalSold} ชิ้น</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">คืน/เสีย</p>
-                                <p className="text-lg font-bold text-indigo-900">
-                                  {detailSummary.totalReturn + detailSummary.totalDefective} ชิ้น
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">ยอดรวม</p>
-                                <p className="text-2xl font-bold text-indigo-900">{formatCurrency(detailSummary.totalAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-indigo-700">จำนวนชิ้น</p>
-                                <p className="text-2xl font-bold text-indigo-900">{detailSummary.totalWithdrawn}</p>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                      
-                      {/* Close Button */}
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          onClick={() => setDetailSale(null)}
-                          size="lg"
-                          className="min-h-[48px] touch-manipulation"
-                          fullWidth
-                        >
-                          ปิด
-                        </Button>
-                      </div>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </div>
+          ) : sales.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+              ยังไม่มีการเบิกสินค้า
             </div>
-          )}
-          
-          {/* Quantity Input Modal */}
-          {showQuantityModal && selectedProduct && (
-            <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <Card className="w-full max-w-md">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle size="lg">🛒 ระบุจำนวน</CardTitle>
-                    <Button
-                      onClick={cancelQuantityInput}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </Button>
+          ) : (
+            <div className="space-y-4">
+              {sales.map((sale) => (
+                <div key={sale._id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-500">
+                      {formatDate(sale.saleDate)}
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(sale)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        แก้ไข
+                      </button>
+                      <button
+                        onClick={() => handleDelete(sale._id)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        ลบ
+                      </button>
+                    </div>
                   </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Product Info */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2">{selectedProduct.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        ราคา: {formatCurrency(getPriceForEmployee(selectedProduct, selectedEmployee))}
+                  <p className="text-lg font-semibold text-gray-900 mb-1">พนักงาน: {sale.employeeName}</p>
+                  <p className="text-md text-gray-700 mb-2">ประเภท: {sale.type}</p>
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <p className="text-sm font-medium text-gray-700">รายการสินค้า:</p>
+                    {sale.items.map(item => (
+                      <p key={item.productId} className="text-sm text-gray-600 ml-2">
+                        - {item.productName} ({item.withdrawal || item.return || item.defective})
                       </p>
-                    </div>
-                    
-                    {/* Quantity Input */}
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-md font-semibold text-gray-800">ยอดรวม: {formatCurrency(sale.totalAmount)}</p>
+                    {sale.settled ? (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        เคลียร์แล้ว
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        ยังไม่เคลียร์
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              total={total}
+              limit={limit}
+              onPageChange={setPage}
+            />
+          </div>
+
+          {/* Add/Edit Sale Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{editingSaleId ? 'แก้ไขการเบิกสินค้า' : 'บันทึกการเบิกใหม่'}</h2>
+                <Form onSubmit={handleSubmit}>
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        จำนวนที่ต้องการเบิก *
-                      </label>
-                      <input
-                        ref={quantityInputRef}
-                        type="text"
-                        inputMode="numeric"
-                        value={quantityInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // Allow only numbers
-                          if (value === '' || /^[0-9]+$/.test(value)) {
-                            setQuantityInput(value);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            confirmQuantityAndAddProduct();
-                          } else if (e.key === 'Escape') {
-                            cancelQuantityInput();
-                          }
-                        }}
-                        className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                        placeholder="จำนวน"
-                        autoComplete="off"
+                      <label htmlFor="employee" className="block text-sm font-medium text-gray-700 mb-1">พนักงาน</label>
+                      <select
+                        id="employee"
+                        value={formData.employeeId}
+                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      >
+                        <option value="">เลือกพนักงาน</option>
+                        {employees.map(emp => (
+                          <option key={emp._id} value={emp._id}>{emp.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="saleType" className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
+                      <select
+                        id="saleType"
+                        value={formData.type}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value as 'เบิก' | 'คืน' })}
+                        required
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      >
+                        <option value="เบิก">เบิก</option>
+                        <option value="คืน">คืน</option>
+                      </select>
+                    </div>
+
+                    <h3 className="text-md font-semibold text-gray-800 mt-4 mb-2">รายการสินค้า</h3>
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-3 mb-3 relative">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="absolute top-2 right-2 text-red-600 hover:text-red-800"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor={`product-${index}`} className="block text-sm font-medium text-gray-700 mb-1">สินค้า</label>
+                            <select
+                              id={`product-${index}`}
+                              value={item.productId}
+                              onChange={(e) => updateItem(index, 'productId', e.target.value)}
+                              required
+                              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                            >
+                              <option value="">เลือกสินค้า</option>
+                              {products.map(prod => (
+                                <option key={prod._id} value={prod._id}>{prod.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label htmlFor={`withdrawal-${index}`} className="block text-sm font-medium text-gray-700 mb-1">เบิก</label>
+                              <input
+                                id={`withdrawal-${index}`}
+                                type="number"
+                                value={item.withdrawal}
+                                onChange={(e) => updateItem(index, 'withdrawal', e.target.value)}
+                                min="0"
+                                disabled={formData.type === 'คืน'}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={`return-${index}`} className="block text-sm font-medium text-gray-700 mb-1">คืน</label>
+                              <input
+                                id={`return-${index}`}
+                                type="number"
+                                value={item.return}
+                                onChange={(e) => updateItem(index, 'return', e.target.value)}
+                                min="0"
+                                disabled={formData.type === 'เบิก'}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={`defective-${index}`} className="block text-sm font-medium text-gray-700 mb-1">ชำรุด</label>
+                              <input
+                                id={`defective-${index}`}
+                                type="number"
+                                value={item.defective}
+                                onChange={(e) => updateItem(index, 'defective', e.target.value)}
+                                min="0"
+                                disabled={formData.type === 'เบิก'}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({ ...formData, items: [...formData.items, { productId: '', productName: '', pricePerUnit: 0, withdrawal: '', return: '', defective: '' }] })} className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-300 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors">
+                      + เพิ่มรายการสินค้า
+                    </button>
+
+                    <div>
+                      <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                      <textarea
+                        id="notes"
+                        value={formData.notes || ''}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        rows={3}
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
                       />
                     </div>
+
+                    <div className="mt-4 text-right">
+                      <p className="text-lg font-semibold text-gray-800">ยอดรวม: {totalAmount.toFixed(2)} บาท</p>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSubmitting ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            กำลังบันทึก...
+                          </div>
+                        ) : (
+                          editingSaleId ? 'บันทึกการแก้ไข' : 'บันทึก'
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </CardContent>
-                
-                <CardFooter>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full">
-                    <Button
-                      onClick={cancelQuantityInput}
-                      variant="secondary"
-                      size="lg"
-                      fullWidth
-                      className="sm:w-auto min-h-[48px] touch-manipulation"
-                    >
-                      ยกเลิก
-                    </Button>
-                    <Button
-                      onClick={confirmQuantityAndAddProduct}
-                      size="lg"
-                      fullWidth
-                      className="sm:w-auto min-h-[48px] touch-manipulation"
-                      disabled={!quantityInput || parseInt(quantityInput, 10) <= 0}
-                    >
-                      เพิ่มสินค้า
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
+                </Form>
+              </div>
             </div>
           )}
         </div>
@@ -1181,3 +513,5 @@ export default function SalesPage() {
     </ProtectedRoute>
   )
 }
+
+

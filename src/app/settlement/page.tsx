@@ -1,13 +1,14 @@
+
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 import { CATEGORY_TYPES, CategoryType } from '../../../lib/constants'
-import Button from '@/components/Button'
+import { Form } from '@/components/Form'
 
 interface SaleItem {
   productId: string
@@ -187,6 +188,31 @@ export default function SettlementPage() {
     }).format(amount)
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const unsettledSales = useMemo(() => sales.filter(sale => !sale.settled), [sales]);
+
+  const totalAmount = useMemo(() => {
+    return itemsForm.reduce(
+      (sum, item) =>
+        sum +
+        item.pricePerUnit * ((Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)),
+      0
+    )
+  }, [itemsForm]);
+
+  const remaining = useMemo(() => {
+    return selectedSale ? totalAmount - (Number(deliveredAmount) || 0) : 0
+  }, [selectedSale, totalAmount, deliveredAmount]);
+
   if (loading) {
     return (
       <ProtectedRoute requiredRole="admin">
@@ -199,116 +225,90 @@ export default function SettlementPage() {
     )
   }
 
-  const unsettledSales = sales
-  const totalAmount = itemsForm.reduce(
-    (sum, item) =>
-      sum +
-      item.pricePerUnit * ((Number(item.withdrawal) || 0) - (Number(item.return) || 0) - (Number(item.defective) || 0)),
-    0
-  )
-  const remaining = selectedSale ? totalAmount - (Number(deliveredAmount) || 0) : 0
-
   return (
     <ProtectedRoute requiredRole="admin">
       <Layout>
-        <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-gray-900">เคลียบิล</h1>
+        <div className="p-4 sm:p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">เคลียบิล</h1>
+          <p className="text-gray-600 mb-6">จัดการการเคลียบิลสำหรับพนักงาน</p>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">รายการที่รอเคลียบิล</h3>
+          {unsettledSales.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+              ยังไม่มีรายการที่รอเคลียบิล
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      พนักงาน
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ยอดรวม
-                    </th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {unsettledSales.map(sale => (
-                    <tr key={sale._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {sale.employeeName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(sale.totalAmount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-4">
-                        <button
-                          onClick={() => openDetails(sale)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          รายละเอียด
-                        </button>
-                        <button
-                          onClick={() => openSettle(sale)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          เคลียบิล
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-          </div>
-          </div>
-          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+          ) : (
+            <div className="space-y-4">
+              {unsettledSales.map(sale => (
+                <div key={sale._id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-500">
+                      {formatDate(sale.saleDate)}
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => openDetails(sale)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        รายละเอียด
+                      </button>
+                      <button
+                        onClick={() => openSettle(sale)}
+                        className="text-green-600 hover:text-green-800 text-sm"
+                      >
+                        เคลียบิล
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900 mb-1">พนักงาน: {sale.employeeName}</p>
+                  <p className="text-md text-gray-700 mb-2">ยอดรวม: {formatCurrency(sale.totalAmount)}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              total={total}
+              limit={limit}
+              onPageChange={setPage}
+            />
+          </div>
+
+          {/* Details Modal */}
           {showDetails && selectedSale && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-xl md:max-w-3xl shadow-lg rounded-md bg-white">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">รายละเอียดสินค้า - {selectedSale.employeeName}</h3>
-                <div className="max-h-[60vh] overflow-y-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedSale.items.map((item, idx) => {
-                        const sold =
-                          (Number(item.withdrawal) || 0) -
-                          (Number(item.return) || 0) -
-                          (Number(item.defective) || 0)
-                        return (
-                          <tr key={idx}>
-                            <td className="px-4 py-2">{item.productName}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                            <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                            <td className="px-4 py-2 text-right">{item.return}</td>
-                            <td className="px-4 py-2 text-right">{item.defective}</td>
-                            <td className="px-4 py-2 text-right">{sold}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">รายละเอียดสินค้า - {selectedSale.employeeName}</h2>
+                <div className="max-h-[60vh] overflow-y-auto mb-4">
+                  <div className="space-y-3">
+                    {selectedSale.items.map((item, idx) => {
+                      const sold =
+                        (Number(item.withdrawal) || 0) -
+                        (Number(item.return) || 0) -
+                        (Number(item.defective) || 0)
+                      return (
+                        <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                          <p className="font-semibold text-gray-900">{item.productName}</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 mt-1">
+                            <span>ราคาต่อหน่วย: {formatCurrency(item.pricePerUnit)}</span>
+                            <span className="text-right">เบิก: {item.withdrawal}</span>
+                            <span>คืน: {item.return}</span>
+                            <span className="text-right">เสีย: {item.defective}</span>
+                            <span>ขายได้: {sold}</span>
+                            <span className="text-right">รวม: {formatCurrency(sold * item.pricePerUnit)}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div className="flex justify-between mt-4 text-sm text-gray-700">
-                  <span>สินค้าหลัก: {categorySummary.main} ชิ้น</span>
-                  <span>สินค้าทางเลือก: {categorySummary.optional} ชิ้น</span>
-                </div>
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-md font-semibold text-gray-800">ยอดรวม: {formatCurrency(selectedSale.totalAmount)}</p>
                   <button
                     type="button"
-                      onClick={() => { setShowDetails(false); setSelectedSale(null); setCategorySummary({ main: 0, optional: 0 }) }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                    onClick={() => { setShowDetails(false); setSelectedSale(null); setCategorySummary({ main: 0, optional: 0 }) }}
+                    className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                   >
                     ปิด
                   </button>
@@ -317,102 +317,102 @@ export default function SettlementPage() {
             </div>
           )}
 
+          {/* Settle Modal */}
           {showModal && selectedSale && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-10 mx-auto p-5 border w-full max-w-xl md:max-w-3xl shadow-lg rounded-md bg-white">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">เคลียบิล - {selectedSale.employeeName}</h3>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="max-h-[50vh] overflow-y-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-medium text-gray-500">สินค้า</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">ราคา</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">เบิก</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">คืน</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">เสีย</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">ขายได้</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-500">รวมราคา</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {itemsForm.map((item, idx) => {
-                          const sold =
-                            (Number(item.withdrawal) || 0) -
-                            (Number(item.return) || 0) -
-                            (Number(item.defective) || 0)
-                          return (
-                            <tr key={idx}>
-                              <td className="px-4 py-2">{item.productName}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(item.pricePerUnit)}</td>
-                              <td className="px-4 py-2 text-right">{item.withdrawal}</td>
-                              <td className="px-4 py-2 text-right">
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">เคลียบิล - {selectedSale.employeeName}</h2>
+                <Form onSubmit={handleSubmit}>
+                  <div className="max-h-[50vh] overflow-y-auto mb-4">
+                    <div className="space-y-3">
+                      {itemsForm.map((item, idx) => {
+                        const sold =
+                          (Number(item.withdrawal) || 0) -
+                          (Number(item.return) || 0) -
+                          (Number(item.defective) || 0)
+                        return (
+                          <div key={idx} className="border border-gray-200 rounded-lg p-3 relative">
+                            <p className="font-semibold text-gray-900">{item.productName}</p>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 mt-1">
+                              <span>ราคาต่อหน่วย: {formatCurrency(item.pricePerUnit)}</span>
+                              <span className="text-right">เบิก: {item.withdrawal}</span>
+                              <div>
+                                <label htmlFor={`return-${idx}`} className="block text-xs font-medium text-gray-500">คืน</label>
                                 <input
-                                  type="text"
+                                  id={`return-${idx}`}
+                                  type="number"
                                   inputMode="numeric"
                                   value={item.return === '' ? '' : item.return}
                                   onChange={e => updateItem(idx, 'return', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                                 />
-                              </td>
-                              <td className="px-4 py-2 text-right">
+                              </div>
+                              <div>
+                                <label htmlFor={`defective-${idx}`} className="block text-xs font-medium text-gray-500">ชำรุด</label>
                                 <input
-                                  type="text"
+                                  id={`defective-${idx}`}
+                                  type="number"
                                   inputMode="numeric"
                                   value={item.defective === '' ? '' : item.defective}
                                   onChange={e => updateItem(idx, 'defective', e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                                 />
-                              </td>
-                              <td className="px-4 py-2 text-right">{sold}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(sold * item.pricePerUnit)}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                              </div>
+                              <span>ขายได้: {sold}</span>
+                              <span className="text-right">รวม: {formatCurrency(sold * item.pricePerUnit)}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>สินค้าหลัก: {categorySummary.main} ชิ้น</span>
                     <span>สินค้าทางเลือก: {categorySummary.optional} ชิ้น</span>
                   </div>
-                  <div className="text-center">
+                  <div className="text-center mt-4">
                     <p className="text-2xl font-bold text-gray-900">ยอดสุทธิ: {formatCurrency(totalAmount)}</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ยอดที่นำส่ง</label>
+                  <div className="mt-4">
+                    <label htmlFor="deliveredAmount" className="block text-sm font-medium text-gray-700 mb-1">จำนวนเงินที่ได้รับ</label>
                     <input
-                      type="text"
+                      id="deliveredAmount"
+                      type="number"
                       inputMode="numeric"
                       value={deliveredAmount}
-                      onChange={e => setDeliveredAmount(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => setDeliveredAmount(e.target.value)}
+                      className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3 text-right"
+                      placeholder="0.00"
                     />
                   </div>
-                  <div className="text-sm text-gray-700">
-                    {remaining > 0 ? (
-                      <p>ค้างชำระ: {formatCurrency(remaining)}</p>
-                    ) : (
-                      <p>ชำระครบแล้ว</p>
-                    )}
+                  <div className="mt-2 text-right">
+                    <p className="text-md font-semibold text-gray-800">คงเหลือ: {formatCurrency(remaining)}</p>
                   </div>
-                  <div className="flex justify-end space-x-3">
+
+                  <div className="flex justify-end space-x-3 mt-6">
                     <button
                       type="button"
-                      onClick={() => { setShowModal(false); setCategorySummary({ main: 0, optional: 0 }) }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                      onClick={() => { setShowModal(false); setSelectedSale(null); setCategorySummary({ main: 0, optional: 0 }) }}
+                      className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                     >
                       ยกเลิก
                     </button>
-                    <Button
+                    <button
                       type="submit"
-                      isLoading={isSubmitting}
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transform transition-all hover:scale-105 active:scale-95"
+                      disabled={isSubmitting}
+                      className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      บันทึก
-                    </Button>
+                      {isSubmitting ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          กำลังบันทึก...
+                        </div>
+                      ) : (
+                        'บันทึกการเคลียบิล'
+                      )}
+                    </button>
                   </div>
-                </form>
+                </Form>
               </div>
             </div>
           )}
@@ -421,4 +421,5 @@ export default function SettlementPage() {
     </ProtectedRoute>
   )
 }
+
 
