@@ -1,8 +1,9 @@
 'use client'
 
+// Extend Navigator interface for vibrate API
 declare global {
   interface Navigator {
-    vibrate?: (pattern: number | number[]) => boolean
+    vibrate(pattern: number | number[]): boolean
   }
 }
 

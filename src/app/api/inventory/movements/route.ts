@@ -57,12 +57,12 @@ export const GET = asyncHandler(async function getStockMovementsHandler(request:
   
   // Date range filter
   if (dateFrom || dateTo) {
-    query.createdAt = {}
+    (query as any).createdAt = {}
     if (dateFrom) {
-      query.createdAt.$gte = new Date(dateFrom)
+      (query as any).createdAt.$gte = new Date(dateFrom)
     }
     if (dateTo) {
-      query.createdAt.$lte = new Date(dateTo)
+      (query as any).createdAt.$lte = new Date(dateTo)
     }
   }
   

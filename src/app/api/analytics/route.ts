@@ -133,25 +133,25 @@ async function getSalesAnalytics(dateFrom: Date, dateTo: Date) {
     salesSummary,
     salesTrends,
     salesByCategory,
-    salesByUser,
-    salesByPayment,
-    topCustomers
+    // salesByUser, // Function not implemented yet
+    // salesByPayment, // Function not implemented yet
+    // topCustomers // Function not implemented yet
   ] = await Promise.all([
     getSalesSummary(dateFrom, dateTo),
     getSalesTrends(dateFrom, dateTo),
     getSalesByCategory(dateFrom, dateTo),
-    getSalesByUser(dateFrom, dateTo),
-    getSalesByPaymentMethod(dateFrom, dateTo),
-    getTopCustomers(dateFrom, dateTo, 10)
+    // getSalesByUser(dateFrom, dateTo), // Function not implemented yet
+    // getSalesByPaymentMethod(dateFrom, dateTo), // Function not implemented yet
+    // getTopCustomers(dateFrom, dateTo, 10) // Function not implemented yet
   ])
   
   return {
     summary: salesSummary,
     trends: salesTrends,
     byCategory: salesByCategory,
-    byUser: salesByUser,
-    byPaymentMethod: salesByPayment,
-    topCustomers
+    // byUser: salesByUser, // Function not implemented yet
+    // byPaymentMethod: salesByPayment, // Function not implemented yet
+    // topCustomers // Function not implemented yet
   }
 }
 
@@ -159,27 +159,27 @@ async function getSalesAnalytics(dateFrom: Date, dateTo: Date) {
 async function getInventoryAnalytics(dateFrom: Date, dateTo: Date) {
   const [
     inventorySummary,
-    stockMovements,
+    // stockMovements, // Function not implemented yet
     lowStockItems,
-    fastMovingItems,
-    slowMovingItems,
-    inventoryValue
+    // fastMovingItems, // Function not implemented yet
+    // slowMovingItems, // Function not implemented yet
+    // inventoryValue // Function not implemented yet
   ] = await Promise.all([
     getInventorySummary(),
-    getStockMovementsSummary(dateFrom, dateTo),
+    // getStockMovementsSummary(dateFrom, dateTo), // Function not implemented yet
     getLowStockItems(),
-    getFastMovingItems(dateFrom, dateTo, 10),
-    getSlowMovingItems(dateFrom, dateTo, 10),
-    getInventoryValueAnalysis()
+    // getFastMovingItems(dateFrom, dateTo, 10), // Function not implemented yet
+    // getSlowMovingItems(dateFrom, dateTo, 10), // Function not implemented yet
+    // getInventoryValueAnalysis() // Function not implemented yet
   ])
   
   return {
     summary: inventorySummary,
-    movements: stockMovements,
+    // movements: stockMovements, // Function not implemented yet
     lowStock: lowStockItems,
-    fastMoving: fastMovingItems,
-    slowMoving: slowMovingItems,
-    valueAnalysis: inventoryValue
+    // fastMoving: fastMovingItems, // Function not implemented yet
+    // slowMoving: slowMovingItems, // Function not implemented yet
+    // valueAnalysis: inventoryValue // Function not implemented yet
   }
 }
 
@@ -187,21 +187,21 @@ async function getInventoryAnalytics(dateFrom: Date, dateTo: Date) {
 async function getProductAnalytics(dateFrom: Date, dateTo: Date) {
   const [
     topProducts,
-    categoryPerformance,
-    productProfitability,
-    newProducts
+    // categoryPerformance, // Function not implemented yet
+    // productProfitability, // Function not implemented yet
+    // newProducts // Function not implemented yet
   ] = await Promise.all([
     getTopProducts(dateFrom, dateTo, 20),
-    getCategoryPerformance(dateFrom, dateTo),
-    getProductProfitability(dateFrom, dateTo),
-    getNewProducts(dateFrom, dateTo)
+    // getCategoryPerformance(dateFrom, dateTo), // Function not implemented yet
+    // getProductProfitability(dateFrom, dateTo), // Function not implemented yet
+    // getNewProducts(dateFrom, dateTo) // Function not implemented yet
   ])
   
   return {
     topProducts,
-    categoryPerformance,
-    profitability: productProfitability,
-    newProducts
+    // categoryPerformance, // Function not implemented yet
+    // profitability: productProfitability, // Function not implemented yet
+    // newProducts // Function not implemented yet
   }
 }
 
@@ -209,21 +209,21 @@ async function getProductAnalytics(dateFrom: Date, dateTo: Date) {
 async function getPerformanceAnalytics(dateFrom: Date, dateTo: Date) {
   const [
     kpis,
-    userPerformance,
-    growthMetrics,
-    efficiency
+    // userPerformance, // Function not implemented yet
+    // growthMetrics, // Function not implemented yet
+    // efficiency // Function not implemented yet
   ] = await Promise.all([
     getKPIs(dateFrom, dateTo),
-    getUserPerformance(dateFrom, dateTo),
-    getGrowthMetrics(dateFrom, dateTo),
-    getEfficiencyMetrics(dateFrom, dateTo)
+    // getUserPerformance(dateFrom, dateTo), // Function not implemented yet
+    // getGrowthMetrics(dateFrom, dateTo), // Function not implemented yet
+    // getEfficiencyMetrics(dateFrom, dateTo) // Function not implemented yet
   ])
   
   return {
     kpis,
-    userPerformance,
-    growth: growthMetrics,
-    efficiency
+    // userPerformance, // Function not implemented yet
+    // growth: growthMetrics, // Function not implemented yet
+    // efficiency // Function not implemented yet
   }
 }
 
@@ -231,21 +231,21 @@ async function getPerformanceAnalytics(dateFrom: Date, dateTo: Date) {
 async function getTrendsAnalytics(dateFrom: Date, dateTo: Date) {
   const [
     salesTrends,
-    inventoryTrends,
-    customerTrends,
-    seasonalTrends
+    // inventoryTrends, // Function not implemented yet
+    // customerTrends, // Function not implemented yet
+    // seasonalTrends // Function not implemented yet
   ] = await Promise.all([
     getSalesTrends(dateFrom, dateTo),
-    getInventoryTrends(dateFrom, dateTo),
-    getCustomerTrends(dateFrom, dateTo),
-    getSeasonalTrends(dateFrom, dateTo)
+    // getInventoryTrends(dateFrom, dateTo), // Function not implemented yet
+    // getCustomerTrends(dateFrom, dateTo), // Function not implemented yet
+    // getSeasonalTrends(dateFrom, dateTo) // Function not implemented yet
   ])
   
   return {
     sales: salesTrends,
-    inventory: inventoryTrends,
-    customers: customerTrends,
-    seasonal: seasonalTrends
+    // inventory: inventoryTrends, // Function not implemented yet
+    // customers: customerTrends, // Function not implemented yet
+    // seasonal: seasonalTrends // Function not implemented yet
   }
 }
 
