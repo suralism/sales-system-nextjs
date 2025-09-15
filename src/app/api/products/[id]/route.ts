@@ -23,8 +23,8 @@ export async function GET(
     await connectDB()
     
     const product = await Product.findById<IProduct>(id).lean()
-    
-    if (!product || !product.isActive) {
+
+    if (!product || product.isActive === false) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -75,7 +75,7 @@ export async function PUT(
     if (name !== undefined) {
       const existingProduct = await Product.findOne({
         name: { $regex: new RegExp(`^${name}$`, 'i') },
-        isActive: true,
+        isActive: { $ne: false },
         _id: { $ne: id }
       })
       
