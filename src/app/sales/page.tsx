@@ -270,7 +270,7 @@ export default function SalesPage() {
   }
 
   return (
-    <ProtectedRoute requiredRole="employee">
+    <ProtectedRoute>
       <Layout>
         <div className="p-4 sm:p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">บันทึกการเบิก</h1>
