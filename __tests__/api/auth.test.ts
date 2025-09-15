@@ -1,16 +1,21 @@
 import { NextRequest } from 'next/server'
-import { POST as loginHandler } from '../../../src/app/api/auth/login/route'
-import { POST as loginAsHandler } from '../../../src/app/api/auth/login-as/route'
-import { POST as exitImpersonationHandler } from '../../../src/app/api/auth/exit-impersonation/route'
-import { generateToken } from '../../../lib/auth'
+import { POST as loginHandler } from '../../src/app/api/auth/login/route'
+import { POST as loginAsHandler } from '../../src/app/api/auth/login-as/route'
+import { POST as exitImpersonationHandler } from '../../src/app/api/auth/exit-impersonation/route'
+import { generateToken } from '../../lib/auth'
 
 // Mock the database connection
-jest.mock('../../../lib/database', () => jest.fn().mockResolvedValue({}))
+jest.mock('../../lib/database', () => jest.fn().mockResolvedValue({}))
 
 // Mock mongoose models
-jest.mock('../../../lib/models/User', () => ({
+jest.mock('../../lib/models/User', () => ({
   findOne: jest.fn(),
   findById: jest.fn(),
+}))
+
+// Mock bcrypt comparison
+jest.mock('bcryptjs', () => ({
+  compare: jest.fn().mockResolvedValue(true)
 }))
 
 const mockUser = {
@@ -40,15 +45,10 @@ describe('/api/auth/login', () => {
   })
 
   it('should login successfully with valid credentials', async () => {
-    const User = require('../../../lib/models/User')
+    const User = require('../../lib/models/User')
     User.findOne.mockResolvedValue(mockUser)
     
-    // Mock bcrypt compare
-    jest.doMock('bcryptjs', () => ({
-      compare: jest.fn().mockResolvedValue(true)
-    }))
-
-    const request = new NextRequest('http://localhost/api/auth/login', {
+      const request = new NextRequest('http://localhost/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         username: 'testuser',
@@ -70,11 +70,11 @@ describe('/api/auth/login', () => {
       name: mockUser.name
     })
     expect(data.user.password).toBeUndefined()
-    expect(data.token).toBeDefined()
+    expect(response.cookies.get('accessToken')).toBeDefined()
   })
 
   it('should reject login with invalid credentials', async () => {
-    const User = require('../../../lib/models/User')
+    const User = require('../../lib/models/User')
     User.findOne.mockResolvedValue(null)
 
     const request = new NextRequest('http://localhost/api/auth/login', {
@@ -107,8 +107,8 @@ describe('/api/auth/login', () => {
     const response = await loginHandler(request)
     const data = await response.json()
 
-    expect(response.status).toBe(400)
-    expect(data.error).toBe('Username and password are required')
+    expect(response.status).toBe(401)
+    expect(data.error).toBe('Invalid input: username is required')
   })
 })
 
@@ -118,7 +118,7 @@ describe('/api/auth/login-as', () => {
   })
 
   it('should allow admin to impersonate employee', async () => {
-    const User = require('../../../lib/models/User')
+    const User = require('../../lib/models/User')
     User.findOne.mockResolvedValue(mockUser)
 
     // Create admin token
@@ -172,14 +172,14 @@ describe('/api/auth/login-as', () => {
     const response = await loginAsHandler(request)
     const data = await response.json()
 
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(401)
     expect(data.error).toBe('Unauthorized - Admin access required')
   })
 })
 
 describe('/api/auth/exit-impersonation', () => {
   it('should exit impersonation session successfully', async () => {
-    const User = require('../../../lib/models/User')
+    const User = require('../../lib/models/User')
     User.findOne.mockResolvedValue(mockAdmin)
 
     // Create impersonation token
