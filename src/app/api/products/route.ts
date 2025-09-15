@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
     const search = searchParams.get('search')?.toString().trim()
 
-    const query: Record<string, unknown> = { isActive: true }
+    // Include products that are active or don't have the isActive field (legacy data)
+    const query: Record<string, unknown> = { isActive: { $ne: false } }
     if (search) {
       query.name = { $regex: search, $options: 'i' }
     }
@@ -90,9 +91,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if product name already exists
-    const existingProduct = await Product.findOne({ 
+    const existingProduct = await Product.findOne({
       name: { $regex: new RegExp(`^${name}$`, 'i') },
-      isActive: true
+      isActive: { $ne: false }
     })
     
     if (existingProduct) {
