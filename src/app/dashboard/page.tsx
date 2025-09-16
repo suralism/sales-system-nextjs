@@ -7,6 +7,7 @@ import Layout from '@/components/Layout'
 import DailySalesChart from '@/components/DailySalesChart'
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/Card'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface RecentSale {
   employeeName: string
@@ -40,11 +41,17 @@ interface DashboardData {
   }
   recentSales: RecentSale[]
   dailySales: DailySale[]
+  credit?: {
+    creditLimit: number
+    creditUsed: number
+    creditRemaining: number
+  }
 }
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     fetchDashboardData()
@@ -113,6 +120,39 @@ export default function DashboardPage() {
 
           {/* Quick Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {user?.role === 'employee' && (
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
+                      <span className="text-xl">💳</span>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-amber-700">เครดิตทั้งหมด</p>
+                        <p className="text-xl font-bold text-gray-900 mt-1">
+                          {formatCurrency(data?.credit?.creditLimit || 0)}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/70 rounded-lg p-2">
+                          <p className="text-xs text-orange-600">ใช้ไปแล้ว</p>
+                          <p className="text-sm font-semibold text-orange-900">
+                            {formatCurrency(data?.credit?.creditUsed || 0)}
+                          </p>
+                        </div>
+                        <div className="bg-white/70 rounded-lg p-2">
+                          <p className="text-xs text-emerald-600">คงเหลือ</p>
+                          <p className="text-sm font-semibold text-emerald-900">
+                            {formatCurrency(data?.credit?.creditRemaining || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             {/* Today Sales */}
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <CardContent className="p-4">

@@ -18,6 +18,9 @@ interface Employee {
   phone: string
   role: 'admin' | 'employee'
   priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ';
+  creditLimit: number
+  creditUsed: number
+  creditRemaining: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -43,7 +46,8 @@ export default function EmployeesPage() {
     position: '',
     phone: '',
     role: 'employee' as 'admin' | 'employee',
-    priceLevel: 'ราคาปกติ' as Employee['priceLevel']
+    priceLevel: 'ราคาปกติ' as Employee['priceLevel'],
+    creditLimit: '0'
   })
 
   const fetchEmployees = useCallback(async () => {
@@ -85,7 +89,8 @@ export default function EmployeesPage() {
         position: formData.position,
         phone: formData.phone,
         role: formData.role,
-        priceLevel: formData.priceLevel
+        priceLevel: formData.priceLevel,
+        creditLimit: Math.max(0, Number(formData.creditLimit) || 0)
       }
 
       if (formData.password) {
@@ -123,12 +128,13 @@ export default function EmployeesPage() {
     setFormData({
       username: employee.username,
       email: employee.email,
-      password: '', 
+      password: '',
       name: employee.name,
       position: employee.position,
       phone: employee.phone,
       role: employee.role,
-      priceLevel: employee.priceLevel || 'ราคาปกติ'
+      priceLevel: employee.priceLevel || 'ราคาปกติ',
+      creditLimit: String(employee.creditLimit ?? 0)
     })
     setShowModal(true)
   }
@@ -178,9 +184,19 @@ export default function EmployeesPage() {
       position: '',
       phone: '',
       role: 'employee',
-      priceLevel: 'ราคาปกติ'
+      priceLevel: 'ราคาปกติ',
+      creditLimit: '0'
     })
     setEditingEmployee(null)
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('th-TH', {
+      style: 'currency',
+      currency: 'THB',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount || 0)
   }
 
   if (loading) {
@@ -239,6 +255,20 @@ export default function EmployeesPage() {
                   <div className="border-t border-gray-200 pt-2 mt-2">
                     <p className="text-sm font-medium text-gray-700">ระดับราคา: <span className="font-normal">{employee.priceLevel}</span></p>
                     <p className="text-sm font-medium text-gray-700">เบอร์ติดต่อ: <span className="font-normal">{employee.phone}</span></p>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="bg-blue-50 rounded-lg p-2">
+                        <p className="text-xs text-blue-600">เครดิตทั้งหมด</p>
+                        <p className="text-sm font-semibold text-blue-900">{formatCurrency(employee.creditLimit)}</p>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-2">
+                        <p className="text-xs text-orange-600">ใช้ไปแล้ว</p>
+                        <p className="text-sm font-semibold text-orange-900">{formatCurrency(employee.creditUsed)}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-2">
+                        <p className="text-xs text-green-600">คงเหลือ</p>
+                        <p className="text-sm font-semibold text-green-900">{formatCurrency(employee.creditRemaining)}</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex space-x-2 mt-4">
                     {employee.role === 'employee' && (
@@ -376,6 +406,19 @@ export default function EmployeesPage() {
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label htmlFor="creditLimit" className="block text-sm font-medium text-gray-700 mb-1">เครดิต (บาท)</label>
+                      <input
+                        id="creditLimit"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.creditLimit}
+                        onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">กำหนดวงเงินที่พนักงานสามารถเบิกได้</p>
+                    </div>
 
                     <div className="flex justify-end space-x-3 mt-6">
                       <button
@@ -410,5 +453,3 @@ export default function EmployeesPage() {
     </ProtectedRoute>
   )
 }
-
-

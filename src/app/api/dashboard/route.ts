@@ -5,6 +5,7 @@ import Product from '../../../../lib/models/Product'
 import User from '../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../lib/auth'
 import mongoose from 'mongoose'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../lib/credit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
     }
     
     // Get statistics
+    let creditSummary: ReturnType<typeof buildCreditSummary> | undefined
+    if (currentUser.role === 'employee') {
+      const [userRecord, creditUsed] = await Promise.all([
+        User.findById(currentUser.userId).select('creditLimit').lean(),
+        calculateCreditForUser(currentUser.userId)
+      ])
+      creditSummary = buildCreditSummary(userRecord?.creditLimit ?? 0, creditUsed)
+    }
+
     const [
       totalProducts,
       totalEmployees,
@@ -334,7 +344,8 @@ export async function GET(request: NextRequest) {
       },
       productDetails,
       recentSales,
-      dailySales
+      dailySales,
+      credit: creditSummary
     }
 
     return NextResponse.json(dashboardData)

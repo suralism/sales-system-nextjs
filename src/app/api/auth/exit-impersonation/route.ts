@@ -6,6 +6,7 @@ import { generateTokenPair } from '../../../../../lib/authEnhanced'
 import { strictRateLimit } from '../../../../../lib/rateLimit'
 import { handleError, AuthenticationError, ValidationError, asyncHandler } from '../../../../../lib/errorHandler'
 import { logger, logAuthSuccess, logAuthFailure } from '../../../../../lib/logger'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 
 export const POST = asyncHandler(async function exitImpersonationHandler(request: NextRequest) {
   const startTime = Date.now()
@@ -58,6 +59,9 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
       name: originalAdmin.name
     })
     
+    const creditUsed = await calculateCreditForUser(originalAdmin._id)
+    const credit = buildCreditSummary(originalAdmin.creditLimit ?? 0, creditUsed)
+
     // Create response with original admin data
     const userData = {
       id: originalAdmin._id,
@@ -67,7 +71,10 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
       position: originalAdmin.position,
       phone: originalAdmin.phone,
       role: originalAdmin.role,
-      priceLevel: originalAdmin.priceLevel
+      priceLevel: originalAdmin.priceLevel,
+      creditLimit: credit.creditLimit,
+      creditUsed: credit.creditUsed,
+      creditRemaining: credit.creditRemaining
     }
     
     const response = NextResponse.json({

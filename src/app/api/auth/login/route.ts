@@ -8,6 +8,7 @@ import { AuthenticationError, asyncHandler } from '../../../../../lib/errorHandl
 import { logger, logAuthSuccess, logAuthFailure, setRequestContext } from '../../../../../lib/logger'
 import { createValidationMiddleware, loginValidationSchema } from '../../../../../lib/validationMiddleware'
 import crypto from 'crypto'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 
 export const POST = asyncHandler(async function loginHandler(request: NextRequest) {
   // Apply rate limiting
@@ -82,6 +83,9 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
       name: user.name
     })
     
+    const creditUsed = await calculateCreditForUser(user._id)
+    const credit = buildCreditSummary(user.creditLimit ?? 0, creditUsed)
+
     // Create response with user data (excluding password)
     const userData = {
       id: user._id,
@@ -91,7 +95,10 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
       position: user.position,
       phone: user.phone,
       role: user.role,
-      priceLevel: user.priceLevel
+      priceLevel: user.priceLevel,
+      creditLimit: credit.creditLimit,
+      creditUsed: credit.creditUsed,
+      creditRemaining: credit.creditRemaining
     }
     
     const response = NextResponse.json({
