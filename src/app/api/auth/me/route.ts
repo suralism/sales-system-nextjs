@@ -3,6 +3,7 @@ import connectDB from '../../../../../lib/database'
 import User, { IUser } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
+import { logger } from '../../../../../lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Get user info error:', error)
+    logger.error('Get user info error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
