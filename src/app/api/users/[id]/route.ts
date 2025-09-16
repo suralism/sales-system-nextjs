@@ -30,9 +30,9 @@ export async function GET(
       )
     }
     
-    const user = await User.findById<IUser>(id)
+    const user = await User.findById(id)
       .select('-password')
-      .lean()
+      .lean<IUser>()
 
     if (!user || !user.isActive) {
       return NextResponse.json(
@@ -41,7 +41,7 @@ export async function GET(
       )
     }
 
-    const creditUsed = await calculateCreditForUser(user._id)
+    const creditUsed = await calculateCreditForUser(user._id.toString())
     const credit = buildCreditSummary(user.creditLimit ?? 0, creditUsed)
 
     return NextResponse.json({

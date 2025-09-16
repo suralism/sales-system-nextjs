@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    logger.error('Get user info error:', error)
+    logger.error('Get user info error:', error instanceof Error ? error : new Error(String(error)))
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -24,6 +24,9 @@ interface Employee {
   _id: string
   name: string
   priceLevel: string;
+  creditLimit?: number
+  creditUsed?: number
+  creditRemaining?: number
 }
 
 interface SaleItem {
@@ -31,8 +34,6 @@ interface SaleItem {
   productName: string
   pricePerUnit: number
   withdrawal: number | ''
-  return: number | ''
-  defective: number | ''
 }
 
 interface Sale {
@@ -43,7 +44,6 @@ interface Sale {
   type: 'เบิก' | 'คืน'
   items: SaleItem[]
   totalAmount: number
-  notes?: string
   paidAmount: number
   paymentMethod: string
   pendingAmount: number
@@ -67,13 +67,44 @@ export default function SalesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedEmployeeCredit, setSelectedEmployeeCredit] = useState<{
+    creditLimit: number
+    creditUsed: number
+    creditRemaining: number
+  } | null>(null)
 
   const [formData, setFormData] = useState({
     employeeId: '',
-    type: 'เบิก' as 'เบิก' | 'คืน',
-    items: [] as SaleItem[],
-    notes: ''
+    items: [] as SaleItem[]
   })
+
+  // Fetch employee credit information
+  const fetchEmployeeCredit = useCallback(async (employeeId: string) => {
+    if (!employeeId) {
+      setSelectedEmployeeCredit(null)
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/users/${employeeId}/credit`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const creditData = await response.json()
+        setSelectedEmployeeCredit({
+          creditLimit: creditData.creditLimit,
+          creditUsed: creditData.creditUsed,
+          creditRemaining: creditData.creditRemaining
+        })
+      } else {
+        setSelectedEmployeeCredit(null)
+      }
+    } catch (error) {
+      console.error('Failed to fetch employee credit:', error)
+      setSelectedEmployeeCredit(null)
+    }
+  }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -96,7 +127,11 @@ export default function SalesPage() {
 
       if (employeesRes && employeesRes.ok) {
         const employeesData = await employeesRes.json()
+        console.log('Sales page - Employees data:', employeesData)
+        console.log('Sales page - Current user role:', user?.role)
         setEmployees(employeesData.users)
+      } else {
+        console.error('Sales page - Failed to fetch employees:', employeesRes?.status, employeesRes?.statusText)
       }
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -111,28 +146,55 @@ export default function SalesPage() {
         fetchData()
         if (user.role === 'employee') {
           setFormData(prev => ({ ...prev, employeeId: user.id }))
+          fetchEmployeeCredit(user.id)
         }
     }
-  }, [user, fetchData])
+  }, [user, fetchData, fetchEmployeeCredit])
+
+  // Fetch credit when employee changes
+  useEffect(() => {
+    if (formData.employeeId) {
+      fetchEmployeeCredit(formData.employeeId)
+    }
+  }, [formData.employeeId, fetchEmployeeCredit])
+
+  // Auto-refresh credit information every 30 seconds for employees
+  useEffect(() => {
+    if (user?.role === 'employee' && user.id) {
+      const interval = setInterval(() => {
+        fetchEmployeeCredit(user.id)
+      }, 30000) // Refresh every 30 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchEmployeeCredit])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check credit limit for withdrawal
+    if (selectedEmployeeCredit && totalAmount > selectedEmployeeCredit.creditRemaining) {
+      toast.error(`เกินวงเงินเครดิต! คงเหลือ: ${formatCurrency(selectedEmployeeCredit.creditRemaining)}, ยอดที่ต้องการเบิก: ${formatCurrency(totalAmount)}`)
+      return
+    }
+    
     setIsSubmitting(true)
 
     try {
       const processedItems = formData.items.map(item => ({
         productId: item.productId,
         withdrawal: Number(item.withdrawal) || 0,
-        return: Number(item.return) || 0,
-        defective: Number(item.defective) || 0,
+        return: 0,
+        defective: 0,
       }))
 
       const submitData = {
         employeeId: formData.employeeId,
-        type: formData.type,
-        items: processedItems,
-        notes: formData.notes
+        type: 'เบิก',
+        items: processedItems
       }
+      
+      console.log('Submitting sale data:', JSON.stringify(submitData, null, 2))
       
       const url = editingSaleId ? `/api/sales/${editingSaleId}` : '/api/sales'
       const method = editingSaleId ? 'PUT' : 'POST'
@@ -148,6 +210,10 @@ export default function SalesPage() {
 
       if (response.ok) {
         await fetchData()
+        // Refresh credit information after successful submission
+        if (formData.employeeId) {
+          await fetchEmployeeCredit(formData.employeeId)
+        }
         setShowModal(false)
         resetForm()
         toast.success(editingSaleId ? 'อัปเดตการเบิกสำเร็จ' : 'บันทึกการเบิกสำเร็จ')
@@ -166,9 +232,7 @@ export default function SalesPage() {
   const resetForm = () => {
     setFormData({
       employeeId: user?.role === 'employee' ? user.id : '',
-      type: 'เบิก',
-      items: [],
-      notes: ''
+      items: []
     })
     setEditingSaleId(null)
   }
@@ -192,7 +256,7 @@ export default function SalesPage() {
                 item.pricePerUnit = priceInfo ? priceInfo.value : 0;
             }
         }
-    } else if (field === 'withdrawal' || field === 'return' || field === 'defective') {
+    } else if (field === 'withdrawal') {
       (item[field] as number | '') = value === '' ? '' : parseInt(value, 10)
     }
     setFormData({ ...formData, items: newItems })
@@ -202,10 +266,7 @@ export default function SalesPage() {
     let amount = 0
     formData.items.forEach(item => {
       const w = Number(item.withdrawal) || 0
-      const r = Number(item.return) || 0
-      const d = Number(item.defective) || 0
-      const netQuantity = w - r - d
-      amount += netQuantity * item.pricePerUnit
+      amount += w * item.pricePerUnit
     })
     return { totalAmount: amount }
   }, [formData.items, products, employees, formData.employeeId])
@@ -236,16 +297,12 @@ export default function SalesPage() {
     setEditingSaleId(sale._id)
     setFormData({
       employeeId: sale.employeeId,
-      type: sale.type,
       items: sale.items.map(item => ({
         productId: item.productId,
         productName: item.productName,
         pricePerUnit: item.pricePerUnit,
-        withdrawal: item.withdrawal,
-        return: item.return,
-        defective: item.defective
-      })),
-      notes: sale.notes || ''
+        withdrawal: item.withdrawal
+      }))
     })
     setShowModal(true)
   }
@@ -274,7 +331,39 @@ export default function SalesPage() {
       <Layout>
         <div className="p-4 sm:p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">บันทึกการเบิก</h1>
-          <p className="text-gray-600 mb-6">บันทึกการเบิกสินค้า (คืน/เคลมใส่ตอนเคลียบิล)</p>
+          <p className="text-gray-600 mb-6">บันทึกการเบิกสินค้า (การคืนหรือชำรุดจะจัดการในหน้าเคลียบิล)</p>
+
+          {/* Real-time Credit Display for Employees */}
+          {user?.role === 'employee' && selectedEmployeeCredit && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <h3 className="text-lg font-semibold text-blue-900 mb-3">💳 ข้อมูลเครดิตของคุณ</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-3 border border-blue-100">
+                  <p className="text-sm text-blue-600 font-medium">วงเงินเครดิต</p>
+                  <p className="text-xl font-bold text-blue-900">{formatCurrency(selectedEmployeeCredit.creditLimit)}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-orange-100">
+                  <p className="text-sm text-orange-600 font-medium">ใช้ไปแล้ว</p>
+                  <p className="text-xl font-bold text-orange-900">{formatCurrency(selectedEmployeeCredit.creditUsed)}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-green-100">
+                  <p className="text-sm text-green-600 font-medium">คงเหลือ</p>
+                  <p className="text-xl font-bold text-green-700">{formatCurrency(selectedEmployeeCredit.creditRemaining)}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={() => fetchEmployeeCredit(user.id)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  รีเฟรช
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end mb-4">
             <button
@@ -325,7 +414,7 @@ export default function SalesPage() {
                     <p className="text-sm font-medium text-gray-700">รายการสินค้า:</p>
                     {sale.items.map(item => (
                       <p key={item.productId} className="text-sm text-gray-600 ml-2">
-                        - {item.productName} ({item.withdrawal || item.return || item.defective})
+                        - {item.productName} ({item.withdrawal})
                       </p>
                     ))}
                   </div>
@@ -376,20 +465,27 @@ export default function SalesPage() {
                           <option key={emp._id} value={emp._id}>{emp.name}</option>
                         ))}
                       </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="saleType" className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
-                      <select
-                        id="saleType"
-                        value={formData.type}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value as 'เบิก' | 'คืน' })}
-                        required
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-                      >
-                        <option value="เบิก">เบิก</option>
-                        <option value="คืน">คืน</option>
-                      </select>
+                      
+                      {/* Credit Information Display */}
+                      {selectedEmployeeCredit && formData.employeeId && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                          <h4 className="text-sm font-medium text-blue-900 mb-2">ข้อมูลเครดิต</h4>
+                          <div className="grid grid-cols-1 gap-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">วงเงินเครดิต:</span>
+                              <span className="font-semibold text-blue-900">{formatCurrency(selectedEmployeeCredit.creditLimit)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">ใช้ไปแล้ว:</span>
+                              <span className="font-semibold text-blue-900">{formatCurrency(selectedEmployeeCredit.creditUsed)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">คงเหลือ:</span>
+                              <span className="font-semibold text-green-700">{formatCurrency(selectedEmployeeCredit.creditRemaining)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <h3 className="text-md font-semibold text-gray-800 mt-4 mb-2">รายการสินค้า</h3>
@@ -404,7 +500,7 @@ export default function SalesPage() {
                             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
                         </button>
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label htmlFor={`product-${index}`} className="block text-sm font-medium text-gray-700 mb-1">สินค้า</label>
                             <select
@@ -415,69 +511,56 @@ export default function SalesPage() {
                               className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
                             >
                               <option value="">เลือกสินค้า</option>
-                              {products.map(prod => (
-                                <option key={prod._id} value={prod._id}>{prod.name}</option>
-                              ))}
+                              {products
+                                .filter(prod => 
+                                  !formData.items.some((item, itemIndex) => 
+                                    itemIndex !== index && item.productId === prod._id
+                                  )
+                                )
+                                .map(prod => (
+                                  <option key={prod._id} value={prod._id}>{prod.name}</option>
+                                ))
+                              }
                             </select>
                           </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label htmlFor={`withdrawal-${index}`} className="block text-sm font-medium text-gray-700 mb-1">เบิก</label>
-                              <input
-                                id={`withdrawal-${index}`}
-                                type="number"
-                                value={item.withdrawal}
-                                onChange={(e) => updateItem(index, 'withdrawal', e.target.value)}
-                                min="0"
-                                disabled={formData.type === 'คืน'}
-                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor={`return-${index}`} className="block text-sm font-medium text-gray-700 mb-1">คืน</label>
-                              <input
-                                id={`return-${index}`}
-                                type="number"
-                                value={item.return}
-                                onChange={(e) => updateItem(index, 'return', e.target.value)}
-                                min="0"
-                                disabled={formData.type === 'เบิก'}
-                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor={`defective-${index}`} className="block text-sm font-medium text-gray-700 mb-1">ชำรุด</label>
-                              <input
-                                id={`defective-${index}`}
-                                type="number"
-                                value={item.defective}
-                                onChange={(e) => updateItem(index, 'defective', e.target.value)}
-                                min="0"
-                                disabled={formData.type === 'เบิก'}
-                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-                              />
-                            </div>
+                          <div>
+                            <label htmlFor={`withdrawal-${index}`} className="block text-sm font-medium text-gray-700 mb-1">จำนวนที่เบิก</label>
+                            <input
+                              id={`withdrawal-${index}`}
+                              type="number"
+                              value={item.withdrawal}
+                              onChange={(e) => updateItem(index, 'withdrawal', e.target.value)}
+                              min="0"
+                              required
+                              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
+                            />
                           </div>
                         </div>
                       </div>
                     ))}
-                    <button type="button" onClick={() => setFormData({ ...formData, items: [...formData.items, { productId: '', productName: '', pricePerUnit: 0, withdrawal: '', return: '', defective: '' }] })} className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-300 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors">
+                    <button type="button" onClick={() => setFormData({ ...formData, items: [...formData.items, { productId: '', productName: '', pricePerUnit: 0, withdrawal: '' }] })} className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-base font-medium hover:bg-gray-300 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors">
                       + เพิ่มรายการสินค้า
                     </button>
 
-                    <div>
-                      <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
-                      <textarea
-                        id="notes"
-                        value={formData.notes || ''}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        rows={3}
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-                      />
-                    </div>
-
                     <div className="mt-4 text-right">
                       <p className="text-lg font-semibold text-gray-800">ยอดรวม: {totalAmount.toFixed(2)} บาท</p>
+                      
+                      {/* Credit limit warning */}
+                      {selectedEmployeeCredit && totalAmount > selectedEmployeeCredit.creditRemaining && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-center">
+                            <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-medium text-red-800">เกินวงเงินเครดิต!</p>
+                              <p className="text-sm text-red-700">
+                                ยอดเบิกเกินคงเหลือ {formatCurrency(totalAmount - selectedEmployeeCredit.creditRemaining)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end space-x-3 mt-6">
@@ -490,7 +573,7 @@ export default function SalesPage() {
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || (selectedEmployeeCredit !== null && totalAmount > selectedEmployeeCredit.creditRemaining)}
                         className="bg-blue-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isSubmitting ? (

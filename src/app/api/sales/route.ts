@@ -4,6 +4,7 @@ import Sale, { ISale } from '../../../../lib/models/Sale'
 import Product, { IPrice } from '../../../../lib/models/Product'
 import User from '../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../lib/auth'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../lib/credit'
 import mongoose from 'mongoose'
 
 // GET - Get sales (admin sees all, employee sees only their own)
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     
     await connectDB()
     
-    const { employeeId, type, items, notes, settled } = await request.json()
+    const { employeeId, type, items, settled } = await request.json()
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -105,9 +106,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    if (!type || !['เบิก', 'คืน'].includes(type)) {
+    if (!type || type !== 'เบิก') {
       return NextResponse.json(
-        { error: 'Invalid sale type' },
+        { error: 'Only withdrawal type is allowed' },
         { status: 400 }
       )
     }
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
     let totalAmount = 0
 
     for (const item of items) {
-      const { productId, withdrawal, return: returnQty, defective } = item
+      const { productId, withdrawal } = item
 
       if (!productId) {
         throw new Error('Invalid item data: productId is missing')
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
       }
       const price = priceInfo.value
 
-      const netQuantity = (withdrawal || 0) - (returnQty || 0) - (defective || 0)
+      const netQuantity = withdrawal || 0
       const itemTotalPrice = price * netQuantity
 
       processedItems.push({
@@ -159,8 +160,8 @@ export async function POST(request: NextRequest) {
         productName: product.name,
         pricePerUnit: price,
         withdrawal: withdrawal || 0,
-        return: returnQty || 0,
-        defective: defective || 0,
+        return: 0,
+        defective: 0,
         totalPrice: itemTotalPrice
       })
 
@@ -174,6 +175,25 @@ export async function POST(request: NextRequest) {
         type: 'เบิก',
         settled: false
       })
+      
+      // Check credit limit for withdrawal type
+      const currentCreditUsed = await calculateCreditForUser(targetEmployeeId)
+      const currentPendingAmount = existingSale ? existingSale.totalAmount : 0
+      const newCreditUsed = currentCreditUsed - currentPendingAmount + totalAmount
+      const creditSummary = buildCreditSummary(employee.creditLimit, newCreditUsed)
+      
+      if (newCreditUsed > (employee.creditLimit || 0)) {
+        return NextResponse.json({
+          error: 'เกินวงเงินเครดิต',
+          details: {
+            creditLimit: creditSummary.creditLimit,
+            currentUsed: currentCreditUsed,
+            requestedAmount: totalAmount,
+            newTotal: newCreditUsed,
+            exceededBy: newCreditUsed - creditSummary.creditLimit
+          }
+        }, { status: 400 })
+      }
     }
 
     if (existingSale) {
@@ -184,11 +204,7 @@ export async function POST(request: NextRequest) {
 
         if (existingItem) {
           existingItem.withdrawal += newItem.withdrawal
-          existingItem.return += newItem.return
-          existingItem.defective += newItem.defective
-          existingItem.totalPrice =
-            existingItem.pricePerUnit *
-            (existingItem.withdrawal - existingItem.return - existingItem.defective)
+          existingItem.totalPrice = existingItem.pricePerUnit * existingItem.withdrawal
         } else {
           existingSale!.items.push(newItem)
         }
@@ -202,12 +218,6 @@ export async function POST(request: NextRequest) {
         existingSale.totalAmount - (existingSale.paidAmount || 0),
         0
       )
-
-      if (notes?.trim()) {
-        existingSale.notes = existingSale.notes
-          ? `${existingSale.notes}\n${notes.trim()}`
-          : notes.trim()
-      }
 
       await existingSale.save()
 
@@ -223,7 +233,6 @@ export async function POST(request: NextRequest) {
       type,
       items: processedItems,
       totalAmount,
-      notes: notes?.trim(),
       paidAmount: 0,
       paymentMethod: 'cash',
       pendingAmount: totalAmount,

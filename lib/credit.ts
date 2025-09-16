@@ -42,14 +42,13 @@ export async function calculateCreditUsage(
       $match: {
         employeeId: { $in: objectIds },
         type: 'เบิก',
-        settled: false,
-        pendingAmount: { $gt: 0 }
+        settled: false
       }
     },
     {
       $group: {
         _id: '$employeeId',
-        totalPending: { $sum: '$pendingAmount' }
+        totalPending: { $sum: '$totalAmount' }
       }
     }
   ])

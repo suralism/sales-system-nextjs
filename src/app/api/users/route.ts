@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../lib/database'
-import User from '../../../../lib/models/User'
+import User, { IUser } from '../../../../lib/models/User'
 import { getUserFromRequest, hashPassword } from '../../../../lib/auth'
 import { apiRateLimit } from '../../../../lib/rateLimit'
 import { AuthenticationError, AuthorizationError, ConflictError, asyncHandler } from '../../../../lib/errorHandler'
@@ -39,11 +39,11 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<IUser[]>(),
       User.countDocuments(query)
     ])
 
-    const usageMap = await calculateCreditUsage(users.map((user) => user._id))
+    const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
 
     const usersWithCredit = users.map((user) => {
       const usage = usageMap.get(user._id.toString()) || 0
@@ -71,34 +71,71 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
       }
     })
   } else {
-    // Employee can only see their own info
-    const user = await User.findById(currentUser.userId)
-      .select('-password')
-      .lean()
+    // Check if this is a request for sales/dropdown purposes (no pagination params)
+    const { searchParams } = new URL(request.url)
+    const forSales = !searchParams.get('page') && !searchParams.get('limit')
+    
+    if (forSales) {
+      // For sales recording, employees can see all employee users
+      const query = { isActive: true, role: 'employee' }
+      const users = await User.find(query)
+        .select('-password')
+        .sort({ name: 1 })
+        .lean<IUser[]>()
 
-    if (!user) {
-      throw new AuthenticationError('User not found')
+      const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
+
+      const usersWithCredit = users.map((user) => {
+        const usage = usageMap.get(user._id.toString()) || 0
+        const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
+
+        return {
+          ...user,
+          creditLimit: credit.creditLimit,
+          creditUsed: credit.creditUsed,
+          creditRemaining: credit.creditRemaining
+        }
+      })
+
+      logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
+        userId: currentUser.userId,
+        context: { type: 'sales-dropdown', resultCount: users.length }
+      })
+
+      return NextResponse.json({
+        users: usersWithCredit,
+        pagination: { page: 1, limit: users.length, total: users.length, pages: 1 }
+      })
+    } else {
+      // Employee can only see their own info when accessing with pagination
+      const user = await User.findById(currentUser.userId)
+        .select('-password')
+        .lean<IUser>()
+
+      if (!user) {
+        throw new AuthenticationError('User not found')
+      }
+
+      const usageMap = await calculateCreditUsage([user._id.toString()])
+      const usage = usageMap.get(user._id.toString()) || 0
+      const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
+
+      const userWithCredit = {
+        ...user,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining
+      }
+
+      logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
+        userId: currentUser.userId
+      })
+
+      return NextResponse.json({
+        users: [userWithCredit],
+        pagination: { page: 1, limit: 1, total: 1, pages: 1 }
+      })
     }
-
-    const usageMap = await calculateCreditUsage([user._id])
-    const usage = usageMap.get(user._id.toString()) || 0
-    const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
-
-    const userWithCredit = {
-      ...user,
-      creditLimit: credit.creditLimit,
-      creditUsed: credit.creditUsed,
-      creditRemaining: credit.creditRemaining
-    }
-
-    logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
-      userId: currentUser.userId
-    })
-
-    return NextResponse.json({
-      users: [userWithCredit],
-      pagination: { page: 1, limit: 1, total: 1, pages: 1 }
-    })
   }
 })
 

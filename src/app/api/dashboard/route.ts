@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     let creditSummary: ReturnType<typeof buildCreditSummary> | undefined
     if (currentUser.role === 'employee') {
       const [userRecord, creditUsed] = await Promise.all([
-        User.findById(currentUser.userId).select('creditLimit').lean(),
+        User.findById(currentUser.userId).select('creditLimit').lean<{ creditLimit?: number }>(),
         calculateCreditForUser(currentUser.userId)
       ])
       creditSummary = buildCreditSummary(userRecord?.creditLimit ?? 0, creditUsed)

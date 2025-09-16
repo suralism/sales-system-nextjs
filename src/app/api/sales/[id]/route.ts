@@ -50,7 +50,6 @@ export async function PUT(
     await connectDB()
     const {
       items,
-      notes,
       settled,
       paidAmount,
       paymentMethod,
@@ -118,7 +117,6 @@ export async function PUT(
 
       sale.items = newProcessedItems
       sale.totalAmount = totalAmount
-      sale.notes = notes?.trim()
       if (typeof settled === 'boolean') {
         sale.settled = settled
       }
@@ -137,7 +135,6 @@ export async function PUT(
 
       return NextResponse.json({ message: 'Sale updated successfully', sale })
     } else {
-      sale.notes = notes?.trim() ?? sale.notes
       if (typeof cashAmount === 'number') sale.cashAmount = cashAmount
       if (typeof transferAmount === 'number') sale.transferAmount = transferAmount
       if (typeof customerPending === 'number') sale.customerPending = customerPending

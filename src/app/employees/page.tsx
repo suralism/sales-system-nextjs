@@ -52,15 +52,18 @@ export default function EmployeesPage() {
 
   const fetchEmployees = useCallback(async () => {
     try {
+      console.log('Fetching employees data...')
       const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
         credentials: 'include'
       })
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Employee data received:', data.users)
         setEmployees(data.users)
         setTotal(data.pagination?.total || 0)
       } else {
+        console.error('Failed to fetch employees, status:', response.status)
         toast.error('Failed to fetch employees.');
       }
     } catch (error) {
@@ -218,7 +221,13 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">👥 จัดการพนักงาน</h1>
           <p className="text-gray-600 mb-6">เพิ่ม แก้ไข และจัดการข้อมูลพนักงาน</p>
 
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={fetchEmployees}
+              className="bg-green-600 text-white py-2 px-4 rounded-lg text-base font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+            >
+              🔄 รีเฟรช
+            </button>
             <button
               onClick={() => {
                 resetForm()

@@ -177,8 +177,7 @@ SaleSchema.index(
 SaleSchema.pre('save', function(next) {
   if (this.isModified('items')) {
     this.totalAmount = this.items.reduce((total, item) => {
-      const netQuantity = item.withdrawal - item.return - item.defective;
-      return total + (netQuantity * item.pricePerUnit);
+      return total + (item.withdrawal * item.pricePerUnit);
     }, 0)
   }
   next()
