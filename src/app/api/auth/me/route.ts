@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     // Get fresh user data from database
-    const userData = await User.findOne<IUser>({ _id: user.userId })
+    const userData = await User.findOne({ _id: user.userId })
       .select('-password')
-      .lean()
+      .lean<IUser>()
     
     if (!userData || !userData.isActive) {
       return NextResponse.json(
