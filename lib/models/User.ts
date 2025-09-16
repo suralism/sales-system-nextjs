@@ -10,6 +10,7 @@ export interface IUser extends mongoose.Document {
   phone: string
   role: 'admin' | 'employee'
   priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ'
+  creditLimit: number
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -66,6 +67,11 @@ const UserSchema = new mongoose.Schema({
     enum: ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ'],
     default: 'ราคาปกติ',
     required: true
+  },
+  creditLimit: {
+    type: Number,
+    default: 0,
+    min: [0, 'Credit limit cannot be negative']
   },
   isActive: {
     type: Boolean,

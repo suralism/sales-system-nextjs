@@ -279,7 +279,14 @@ export const userValidationSchema: ValidationSchema = {
     minLength: 1,
     maxLength: 100
   },
+  position: {
+    required: true,
+    type: 'string',
+    minLength: 1,
+    maxLength: 100
+  },
   phone: {
+    required: true,
     type: 'string',
     pattern: /^\+?[\d\s\-()]+$/
   },
@@ -287,6 +294,15 @@ export const userValidationSchema: ValidationSchema = {
     required: true,
     type: 'string',
     enum: ['admin', 'employee'] as const
+  },
+  priceLevel: {
+    required: true,
+    type: 'string',
+    enum: ['ราคาปกติ', 'ราคาตัวแทน', 'ราคาพนักงาน', 'ราคาพิเศษ'] as const
+  },
+  creditLimit: {
+    type: 'number',
+    min: 0
   }
 }
 

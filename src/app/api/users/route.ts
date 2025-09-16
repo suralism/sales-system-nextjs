@@ -6,6 +6,7 @@ import { apiRateLimit } from '../../../../lib/rateLimit'
 import { AuthenticationError, AuthorizationError, ConflictError, asyncHandler } from '../../../../lib/errorHandler'
 import { logger } from '../../../../lib/logger'
 import { createValidationMiddleware, userValidationSchema } from '../../../../lib/validationMiddleware'
+import { calculateCreditUsage, buildCreditSummary } from '../../../../lib/credit'
 
 // GET - Get all users (admin only) or current user info
 export const GET = asyncHandler(async function getUsersHandler(request: NextRequest) {
@@ -42,12 +43,26 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
       User.countDocuments(query)
     ])
 
+    const usageMap = await calculateCreditUsage(users.map((user) => user._id))
+
+    const usersWithCredit = users.map((user) => {
+      const usage = usageMap.get(user._id.toString()) || 0
+      const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
+
+      return {
+        ...user,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining
+      }
+    })
+
     logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
       context: { adminId: currentUser.userId, resultCount: users.length }
     })
 
     return NextResponse.json({
-      users,
+      users: usersWithCredit,
       pagination: {
         page,
         limit,
@@ -65,12 +80,23 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
       throw new AuthenticationError('User not found')
     }
 
+    const usageMap = await calculateCreditUsage([user._id])
+    const usage = usageMap.get(user._id.toString()) || 0
+    const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
+
+    const userWithCredit = {
+      ...user,
+      creditLimit: credit.creditLimit,
+      creditUsed: credit.creditUsed,
+      creditRemaining: credit.creditRemaining
+    }
+
     logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
       userId: currentUser.userId
     })
 
     return NextResponse.json({
-      users: [user],
+      users: [userWithCredit],
       pagination: { page: 1, limit: 1, total: 1, pages: 1 }
     })
   }
@@ -106,7 +132,17 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
     throw new AuthenticationError('Validation failed: ' + validation.errors.join(', '))
   }
   
-  const { username, email, password, name, position, phone, role } = validation.sanitizedData
+  const {
+    username,
+    email,
+    password,
+    name,
+    position,
+    phone,
+    role,
+    priceLevel,
+    creditLimit
+  } = validation.sanitizedData
   
   // Check if username or email already exists
   const existingUser = await User.findOne({
@@ -124,6 +160,8 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
   const hashedPassword = await hashPassword(String(password))
   
   // Create new user
+  const normalizedCreditLimit = typeof creditLimit === 'number' && creditLimit > 0 ? creditLimit : 0
+
   const newUser = new User({
     username: String(username).toLowerCase(),
     email: String(email).toLowerCase(),
@@ -131,12 +169,16 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
     name: String(name),
     position: String(position),
     phone: String(phone),
-    role: role || 'employee'
+    role: role || 'employee',
+    priceLevel: priceLevel || 'ราคาปกติ',
+    creditLimit: normalizedCreditLimit
   })
   
   await newUser.save()
   
   // Return user data without password
+  const credit = buildCreditSummary(newUser.creditLimit, 0)
+
   const userData = {
     id: newUser._id,
     username: newUser.username,
@@ -145,6 +187,10 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
     position: newUser.position,
     phone: newUser.phone,
     role: newUser.role,
+    priceLevel: newUser.priceLevel,
+    creditLimit: credit.creditLimit,
+    creditUsed: credit.creditUsed,
+    creditRemaining: credit.creditRemaining,
     isActive: newUser.isActive,
     createdAt: newUser.createdAt
   }

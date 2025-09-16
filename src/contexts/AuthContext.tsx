@@ -11,6 +11,9 @@ interface User {
   phone: string
   role: 'admin' | 'employee'
   priceLevel: 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ'
+  creditLimit: number
+  creditUsed: number
+  creditRemaining: number
   // Impersonation fields
   isImpersonation?: boolean
   originalAdmin?: {

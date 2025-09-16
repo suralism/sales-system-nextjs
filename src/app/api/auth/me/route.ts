@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
 import User, { IUser } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +29,9 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    const creditUsed = await calculateCreditForUser(userData._id)
+    const credit = buildCreditSummary(userData.creditLimit ?? 0, creditUsed)
+
     return NextResponse.json({
       user: {
         id: userData._id,
@@ -38,6 +42,9 @@ export async function GET(request: NextRequest) {
         phone: userData.phone,
         role: userData.role,
         priceLevel: userData.priceLevel,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining,
         // Include impersonation info if present
         ...(user.isImpersonation && {
           isImpersonation: true,

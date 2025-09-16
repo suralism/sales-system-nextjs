@@ -6,6 +6,7 @@ import { generateTokenPair } from '../../../../../lib/authEnhanced'
 import { strictRateLimit } from '../../../../../lib/rateLimit'
 import { handleError, AuthenticationError, ValidationError, asyncHandler, validateRequired, validateObjectId } from '../../../../../lib/errorHandler'
 import { logger, logAuthSuccess, logAuthFailure } from '../../../../../lib/logger'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 
 export const POST = asyncHandler(async function loginAsHandler(request: NextRequest) {
   const startTime = Date.now()
@@ -67,6 +68,9 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
       isImpersonation: true
     })
     
+    const creditUsed = await calculateCreditForUser(targetUser._id)
+    const credit = buildCreditSummary(targetUser.creditLimit ?? 0, creditUsed)
+
     // Create response with target user data
     const userData = {
       id: targetUser._id,
@@ -77,6 +81,9 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
       phone: targetUser.phone,
       role: targetUser.role,
       priceLevel: targetUser.priceLevel,
+      creditLimit: credit.creditLimit,
+      creditUsed: credit.creditUsed,
+      creditRemaining: credit.creditRemaining,
       // Include impersonation info for frontend
       isImpersonation: true,
       originalAdmin: {

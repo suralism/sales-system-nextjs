@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '../../../../../lib/database'
 import User, { IUser } from '../../../../../lib/models/User'
 import { getUserFromRequest, hashPassword } from '../../../../../lib/auth'
+import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 
 // GET - Get specific user
 export async function GET(
@@ -32,15 +33,25 @@ export async function GET(
     const user = await User.findById<IUser>(id)
       .select('-password')
       .lean()
-    
+
     if (!user || !user.isActive) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       )
     }
-    
-    return NextResponse.json({ user })
+
+    const creditUsed = await calculateCreditForUser(user._id)
+    const credit = buildCreditSummary(user.creditLimit ?? 0, creditUsed)
+
+    return NextResponse.json({
+      user: {
+        ...user,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining
+      }
+    })
     
   } catch (error) {
     console.error('Get user error:', error)
@@ -93,14 +104,24 @@ export async function PUT(
     
     if (currentUser.role === 'admin') {
       // Admin can update all fields
-      const { name, position, phone, email, role, password, priceLevel } = updateData
-      
+      const { name, position, phone, email, role, password, priceLevel, creditLimit } = updateData
+
       if (name) allowedUpdates.name = name
       if (position) allowedUpdates.position = position
       if (phone) allowedUpdates.phone = phone
       if (email) allowedUpdates.email = email.toLowerCase()
       if (role) allowedUpdates.role = role
       if (priceLevel) allowedUpdates.priceLevel = priceLevel
+      if (creditLimit !== undefined) {
+        const parsedCredit = Number(creditLimit)
+        if (Number.isNaN(parsedCredit) || parsedCredit < 0) {
+          return NextResponse.json(
+            { error: 'Credit limit must be a non-negative number' },
+            { status: 400 }
+          )
+        }
+        allowedUpdates.creditLimit = parsedCredit
+      }
       if (password) allowedUpdates.password = await hashPassword(password)
     } else {
       // Employee can only update their own personal info
@@ -137,10 +158,26 @@ export async function PUT(
       allowedUpdates,
       { new: true, runValidators: true }
     ).select('-password')
-    
+
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    const updatedUserData = updatedUser.toObject()
+    const creditUsed = await calculateCreditForUser(updatedUserData._id)
+    const credit = buildCreditSummary(updatedUserData.creditLimit ?? 0, creditUsed)
+
     return NextResponse.json({
       message: 'User updated successfully',
-      user: updatedUser
+      user: {
+        ...updatedUserData,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining
+      }
     })
     
   } catch (error) {
