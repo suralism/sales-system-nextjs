@@ -24,10 +24,67 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
     throw new AuthenticationError('Authentication required')
   }
   
+  const url = new URL(request.url)
+  const searchParams = url.searchParams
+  const view = searchParams.get('view')
+
   await connectDB()
 
+  if (view === 'dropdown') {
+    const limitParam = parseInt(searchParams.get('limit') || '0', 10)
+    const requestedLimit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : null
+    const roleFilter = searchParams.get('role') || 'employee'
+
+    const query: Record<string, unknown> = { isActive: true }
+    if (roleFilter !== 'all') {
+      query.role = roleFilter
+    }
+
+    const dropdownQuery = User.find(query)
+      .select('-password')
+      .sort({ name: 1 })
+
+    if (requestedLimit) {
+      dropdownQuery.limit(requestedLimit)
+    }
+
+    const users = await dropdownQuery.lean<IUser[]>()
+
+    const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
+
+    const usersWithCredit = users.map((user) => {
+      const usage = usageMap.get(user._id.toString()) || 0
+      const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
+
+      return {
+        ...user,
+        creditLimit: credit.creditLimit,
+        creditUsed: credit.creditUsed,
+        creditRemaining: credit.creditRemaining
+      }
+    })
+
+    logger.logRequest('GET', '/api/users', 200, Date.now() - startTime, {
+      context: {
+        userId: currentUser.userId,
+        view: 'dropdown',
+        roleFilter,
+        resultCount: usersWithCredit.length
+      }
+    })
+
+    return NextResponse.json({
+      users: usersWithCredit,
+      pagination: {
+        page: 1,
+        limit: usersWithCredit.length,
+        total: usersWithCredit.length,
+        pages: 1
+      }
+    })
+  }
+
   if (currentUser.role === 'admin') {
-    const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10', 10)))
     const skip = (page - 1) * limit
@@ -72,7 +129,6 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
     })
   } else {
     // Check if this is a request for sales/dropdown purposes (no pagination params)
-    const { searchParams } = new URL(request.url)
     const forSales = !searchParams.get('page') && !searchParams.get('limit')
     
     if (forSales) {

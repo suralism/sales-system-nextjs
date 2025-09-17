@@ -111,7 +111,7 @@ export default function SalesPage() {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
         fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include' }),
         fetch('/api/products?limit=1000', { credentials: 'include' }),
-        fetch('/api/users', { credentials: 'include' })
+        fetch('/api/users?view=dropdown&limit=1000', { credentials: 'include' })
       ])
 
       if (salesRes.ok) {
