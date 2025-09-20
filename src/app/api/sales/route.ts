@@ -182,19 +182,43 @@ export async function POST(request: NextRequest) {
       
       // Check credit limit for withdrawal type
       const currentCreditUsed = await calculateCreditForUser(targetEmployeeId)
-      const currentPendingAmount = existingSale ? existingSale.totalAmount : 0
-      const newCreditUsed = currentCreditUsed - currentPendingAmount + totalAmount
-      const creditSummary = buildCreditSummary(employee.creditLimit, newCreditUsed)
-      
-      if (newCreditUsed > (employee.creditLimit || 0)) {
+      const existingPendingAmount = existingSale
+        ? typeof existingSale.pendingAmount === 'number'
+          ? existingSale.pendingAmount
+          : Math.max(
+              (existingSale.totalAmount || 0) - (existingSale.paidAmount || 0),
+              0
+            )
+        : 0
+
+      const newPendingAmount = Math.max(
+        totalAmount - (existingSale?.paidAmount || 0),
+        0
+      )
+
+      const newCreditUsed =
+        currentCreditUsed - existingPendingAmount + newPendingAmount
+      const creditSummary = buildCreditSummary(
+        employee.creditLimit,
+        newCreditUsed
+      )
+
+      const creditLimit =
+        typeof employee.creditLimit === 'number' ? employee.creditLimit : 0
+
+      if (newCreditUsed > creditLimit) {
         return NextResponse.json({
           error: 'เกินวงเงินเครดิต',
           details: {
             creditLimit: creditSummary.creditLimit,
             currentUsed: currentCreditUsed,
-            requestedAmount: totalAmount,
+            existingPending: existingPendingAmount,
+            requestedAmount: newPendingAmount,
             newTotal: newCreditUsed,
-            exceededBy: newCreditUsed - creditSummary.creditLimit
+            exceededBy: Math.max(
+              newCreditUsed - creditSummary.creditLimit,
+              0
+            )
           }
         }, { status: 400 })
       }

@@ -48,7 +48,11 @@ export async function calculateCreditUsage(
     {
       $group: {
         _id: '$employeeId',
-        totalPending: { $sum: '$totalAmount' }
+        totalPending: {
+          $sum: {
+            $ifNull: ['$pendingAmount', '$totalAmount']
+          }
+        }
       }
     }
   ])
