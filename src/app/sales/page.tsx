@@ -87,7 +87,8 @@ export default function SalesPage() {
     
     try {
       const response = await fetch(`/api/users/${employeeId}/credit`, {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
       
       if (response.ok) {
@@ -109,9 +110,9 @@ export default function SalesPage() {
   const fetchData = useCallback(async () => {
     try {
       const [salesRes, productsRes, employeesRes] = await Promise.all([
-        fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include' }),
-        fetch('/api/products?limit=1000', { credentials: 'include' }),
-        fetch('/api/users?view=dropdown&limit=1000', { credentials: 'include' })
+        fetch(`/api/sales?page=${page}&limit=${limit}`, { credentials: 'include', cache: 'no-store' }),
+        fetch('/api/products?limit=1000', { credentials: 'include', cache: 'no-store' }),
+        fetch('/api/users?view=dropdown&limit=1000', { credentials: 'include', cache: 'no-store' })
       ])
 
       if (salesRes.ok) {
@@ -205,7 +206,8 @@ export default function SalesPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(submitData),
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
 
       if (response.ok) {
@@ -276,7 +278,8 @@ export default function SalesPage() {
       try {
         const response = await fetch(`/api/sales/${saleId}`, {
           method: 'DELETE',
-          credentials: 'include'
+          credentials: 'include',
+          cache: 'no-store'
         });
 
         if (response.ok) {

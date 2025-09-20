@@ -47,7 +47,8 @@ export default function ProductsPage() {
     try {
       const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''
       const response = await fetch(`/api/products?page=${page}&limit=${limit}${searchQuery}`, {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
 
       if (response.ok) {
@@ -88,7 +89,8 @@ export default function ProductsPage() {
       const response = await fetch('/api/products/import', {
         method: 'POST',
         body: formData,
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
       if (response.ok) {
         const data = await response.json()
@@ -133,7 +135,8 @@ export default function ProductsPage() {
           prices: processedPrices,
           category: formData.category
         }),
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
 
       if (response.ok) {
@@ -186,7 +189,8 @@ export default function ProductsPage() {
     try {
       const response = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'
       })
 
       if (response.ok) {
