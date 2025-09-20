@@ -4,6 +4,10 @@ import Product from '../../../../lib/models/Product'
 import { CATEGORY_TYPES } from '../../../../lib/constants'
 import { getUserFromRequest } from '../../../../lib/auth'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
 // GET - Get all products
 export async function GET(request: NextRequest) {
   try {
