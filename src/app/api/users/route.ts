@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../lib/database'
-import User, { IUser } from '../../../../lib/models/User'
+import { UserModel } from '../../../../lib/models/User'
 import { getUserFromRequest, hashPassword } from '../../../../lib/auth'
 import { apiRateLimit } from '../../../../lib/rateLimit'
 import { AuthenticationError, AuthorizationError, ConflictError, asyncHandler } from '../../../../lib/errorHandler'
@@ -28,32 +27,26 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
   const searchParams = url.searchParams
   const view = searchParams.get('view')
 
-  await connectDB()
-
   if (view === 'dropdown') {
     const limitParam = parseInt(searchParams.get('limit') || '0', 10)
     const requestedLimit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : null
     const roleFilter = searchParams.get('role') || 'employee'
 
-    const query: Record<string, unknown> = { isActive: true }
+    const query: any = { isActive: true }
     if (roleFilter !== 'all') {
-      query.role = roleFilter
+      query.role = roleFilter as 'admin' | 'employee'
     }
 
-    const dropdownQuery = User.find(query)
-      .select('-password')
-      .sort({ name: 1 })
-
+    let users = await UserModel.find(query)
+    
     if (requestedLimit) {
-      dropdownQuery.limit(requestedLimit)
+      users = users.slice(0, requestedLimit)
     }
 
-    const users = await dropdownQuery.lean<IUser[]>()
+    const usageMap = await calculateCreditUsage(users.map((user: any) => user.id.toString()))
 
-    const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
-
-    const usersWithCredit = users.map((user) => {
-      const usage = usageMap.get(user._id.toString()) || 0
+    const usersWithCredit = users.map((user: any) => {
+      const usage = usageMap.get(user.id.toString()) || 0
       const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
 
       return {
@@ -90,20 +83,18 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
     const skip = (page - 1) * limit
 
     const query = { isActive: true }
-    const [users, total] = await Promise.all([
-      User.find(query)
-        .select('-password')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean<IUser[]>(),
-      User.countDocuments(query)
-    ])
+    let allUsers = await UserModel.find(query)
+    
+    // Sort by created date (newest first)
+    allUsers.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    
+    const total = allUsers.length
+    const users = allUsers.slice(skip, skip + limit)
 
-    const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
+    const usageMap = await calculateCreditUsage(users.map((user: any) => user.id.toString()))
 
-    const usersWithCredit = users.map((user) => {
-      const usage = usageMap.get(user._id.toString()) || 0
+    const usersWithCredit = users.map((user: any) => {
+      const usage = usageMap.get(user.id.toString()) || 0
       const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
 
       return {
@@ -133,16 +124,13 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
     
     if (forSales) {
       // For sales recording, employees can see all employee users
-      const query = { isActive: true, role: 'employee' }
-      const users = await User.find(query)
-        .select('-password')
-        .sort({ name: 1 })
-        .lean<IUser[]>()
+      const query = { isActive: true, role: 'employee' as const }
+      const users = await UserModel.find(query)
 
-      const usageMap = await calculateCreditUsage(users.map((user) => user._id.toString()))
+      const usageMap = await calculateCreditUsage(users.map((user: any) => user.id.toString()))
 
-      const usersWithCredit = users.map((user) => {
-        const usage = usageMap.get(user._id.toString()) || 0
+      const usersWithCredit = users.map((user: any) => {
+        const usage = usageMap.get(user.id.toString()) || 0
         const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
 
         return {
@@ -164,16 +152,14 @@ export const GET = asyncHandler(async function getUsersHandler(request: NextRequ
       })
     } else {
       // Employee can only see their own info when accessing with pagination
-      const user = await User.findById(currentUser.userId)
-        .select('-password')
-        .lean<IUser>()
+      const user = await UserModel.findById(currentUser.userId)
 
       if (!user) {
         throw new AuthenticationError('User not found')
       }
 
-      const usageMap = await calculateCreditUsage([user._id.toString()])
-      const usage = usageMap.get(user._id.toString()) || 0
+      const usageMap = await calculateCreditUsage([user.id.toString()])
+      const usage = usageMap.get(user.id.toString()) || 0
       const credit = buildCreditSummary(user.creditLimit ?? 0, usage)
 
       const userWithCredit = {
@@ -211,8 +197,6 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
     throw new AuthorizationError('Admin access required')
   }
   
-  await connectDB()
-  
   // Validate and sanitize input
   const validateUser = createValidationMiddleware(userValidationSchema)
   const validation = await validateUser(request)
@@ -238,11 +222,8 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
   } = validation.sanitizedData
   
   // Check if username or email already exists
-  const existingUser = await User.findOne({
-    $or: [
-      { username: String(username).toLowerCase() },
-      { email: String(email).toLowerCase() }
-    ]
+  const existingUser = await UserModel.findOne({
+    username: String(username).toLowerCase()
   })
   
   if (existingUser) {
@@ -255,25 +236,24 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
   // Create new user
   const normalizedCreditLimit = typeof creditLimit === 'number' && creditLimit > 0 ? creditLimit : 0
 
-  const newUser = new User({
+  const newUser = await UserModel.create({
     username: String(username).toLowerCase(),
     email: String(email).toLowerCase(),
     password: hashedPassword,
     name: String(name),
     position: String(position),
     phone: String(phone),
-    role: role || 'employee',
-    priceLevel: priceLevel || 'ราคาปกติ',
-    creditLimit: normalizedCreditLimit
+    role: (role as 'admin' | 'employee') || 'employee',
+    priceLevel: (priceLevel as 'ราคาปกติ' | 'ราคาตัวแทน' | 'ราคาพนักงาน' | 'ราคาพิเศษ') || 'ราคาปกติ',
+    creditLimit: normalizedCreditLimit,
+    isActive: true
   })
-  
-  await newUser.save()
   
   // Return user data without password
   const credit = buildCreditSummary(newUser.creditLimit, 0)
 
   const userData = {
-    id: newUser._id,
+    id: newUser.id,
     username: newUser.username,
     email: newUser.email,
     name: newUser.name,
@@ -289,13 +269,13 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
   }
   
   logger.info('User created successfully', {
-    newUserId: newUser._id.toString(),
+    newUserId: newUser.id.toString(),
     adminId: currentUser.userId,
     username: newUser.username
   })
   
   logger.logRequest('POST', '/api/users', 201, Date.now() - startTime, {
-    context: { adminId: currentUser.userId, newUserId: newUser._id.toString() }
+    context: { adminId: currentUser.userId, newUserId: newUser.id.toString() }
   })
   
   return NextResponse.json({
@@ -303,4 +283,3 @@ export const POST = asyncHandler(async function createUserHandler(request: NextR
     user: userData
   }, { status: 201 })
 })
-

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../lib/database'
-import Sale, { ISale } from '../../../../lib/models/Sale'
-import Product, { IPrice } from '../../../../lib/models/Product'
-import User from '../../../../lib/models/User'
+import { SaleModel } from '../../../../lib/models/Sale'
+import { ProductModel } from '../../../../lib/models/Product'
+import { UserModel } from '../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../lib/auth'
 import { calculateCreditForUser, buildCreditSummary } from '../../../../lib/credit'
-import mongoose from 'mongoose'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -23,50 +21,44 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    await connectDB()
-    
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    const query: {
-      saleDate?: { $gte?: Date, $lte?: Date },
-      settled?: boolean,
-      employeeId?: mongoose.Types.ObjectId
-    } = {}
+    // Get all sales
+    let allSales = currentUser.role === 'employee' 
+      ? await SaleModel.find({ employeeId: currentUser.userId })
+      : await SaleModel.find({})
     
-    if (currentUser.role === 'employee') {
-      // Employee can only see their own sales
-      query.employeeId = new mongoose.Types.ObjectId(currentUser.userId)
-    }
-    
-    // Add date filter if provided
+    // Apply filters
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const settled = searchParams.get('settled')
     
-    if (startDate || endDate) {
-      const saleDateQuery: { $gte?: Date; $lte?: Date } = {};
-      if (startDate) {
-        saleDateQuery.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        saleDateQuery.$lte = new Date(endDate);
-      }
-      query.saleDate = saleDateQuery;
+    if (startDate) {
+      const startDateISO = new Date(startDate).toISOString()
+      allSales = allSales.filter(sale => sale.saleDate >= startDateISO)
+    }
+    
+    if (endDate) {
+      const endDateISO = new Date(endDate).toISOString()
+      allSales = allSales.filter(sale => sale.saleDate <= endDateISO)
     }
 
-    if (settled === 'true') query.settled = true
-    if (settled === 'false') query.settled = false
+    if (settled === 'true') {
+      allSales = allSales.filter(sale => sale.settled === true)
+    }
+    if (settled === 'false') {
+      allSales = allSales.filter(sale => sale.settled === false)
+    }
     
-    const sales = await Sale.find(query)
-      .sort({ saleDate: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean()
+    // Sort by date (newest first)
+    allSales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
     
-    const total = await Sale.countDocuments(query)
+    // Apply pagination
+    const total = allSales.length
+    const sales = allSales.slice(skip, skip + limit)
     
     return NextResponse.json({
       sales,
@@ -99,8 +91,6 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    await connectDB()
-    
     const { employeeId, type, items, settled } = await request.json()
     
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -125,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
     const targetEmployeeId = employeeId
     
-    const employee = await User.findById(targetEmployeeId)
+    const employee = await UserModel.findById(targetEmployeeId)
     if (!employee || !employee.isActive) {
       return NextResponse.json(
         { error: 'Employee not found' },
@@ -143,12 +133,12 @@ export async function POST(request: NextRequest) {
         throw new Error('Invalid item data: productId is missing')
       }
 
-      const product = await Product.findById(productId)
+      const product = await ProductModel.findById(productId)
       if (!product || !product.isActive) {
         throw new Error(`Product not found: ${productId}`)
       }
 
-      const priceInfo = product.prices.find((p: IPrice) => p.level === employee.priceLevel)
+      const priceInfo = product.prices.find((p: any) => p.level === employee.priceLevel)
       if (!priceInfo) {
         throw new Error(
           `Price for level ${employee.priceLevel} not found for product ${product.name}`
@@ -160,7 +150,7 @@ export async function POST(request: NextRequest) {
       const itemTotalPrice = price * netQuantity
 
       processedItems.push({
-        productId: product._id,
+        productId: product.id,
         productName: product.name,
         pricePerUnit: price,
         withdrawal: withdrawal || 0,
@@ -172,13 +162,11 @@ export async function POST(request: NextRequest) {
       totalAmount += itemTotalPrice
     }
 
-    let existingSale: ISale | null = null
+    // Find existing unsettled sale for this employee
+    let existingSale = null
     if (type === 'เบิก') {
-      existingSale = await Sale.findOne({
-        employeeId: targetEmployeeId,
-        type: 'เบิก',
-        settled: false
-      })
+      const allSales = await SaleModel.find({ employeeId: targetEmployeeId, type: 'เบิก', settled: false })
+      existingSale = allSales.length > 0 ? allSales[0] : null
       
       // Check credit limit for withdrawal type
       const currentCreditUsed = await calculateCreditForUser(targetEmployeeId)
@@ -225,9 +213,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingSale) {
+      // Update existing sale
       processedItems.forEach((newItem) => {
         const existingItem = existingSale!.items.find(
-          (item) => item.productId.toString() === newItem.productId.toString()
+          (item) => item.productId === newItem.productId
         )
 
         if (existingItem) {
@@ -247,7 +236,11 @@ export async function POST(request: NextRequest) {
         0
       )
 
-      await existingSale.save()
+      await SaleModel.updateById(existingSale.id, {
+        items: existingSale.items,
+        totalAmount: existingSale.totalAmount,
+        pendingAmount: existingSale.pendingAmount
+      })
 
       return NextResponse.json({
         message: 'Sale updated successfully',
@@ -255,7 +248,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const newSale = new Sale({
+    // Create new sale
+    const newSale = await SaleModel.create({
       employeeId: targetEmployeeId,
       employeeName: employee.name,
       type,
@@ -269,10 +263,9 @@ export async function POST(request: NextRequest) {
       customerPending: 0,
       expenseAmount: 0,
       awaitingTransfer: 0,
-      settled: settled ?? false
+      settled: settled ?? false,
+      saleDate: new Date().toISOString()
     })
-
-    await newSale.save()
 
     return NextResponse.json(
       {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../../lib/database'
-import User from '../../../../../lib/models/User'
+import { UserModel } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 import { generateTokenPair } from '../../../../../lib/authEnhanced'
 import { strictRateLimit } from '../../../../../lib/rateLimit'
@@ -34,11 +33,9 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
       throw new ValidationError('Not in an impersonation session')
     }
     
-    await connectDB()
-    
     // Find the original admin user
-    const originalAdmin = await User.findOne({ 
-      _id: currentUser.originalAdminId,
+    const originalAdmin = await UserModel.findOne({ 
+      id: currentUser.originalAdminId,
       isActive: true,
       role: 'admin'
     })
@@ -53,18 +50,18 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
     
     // Generate new token pair for the original admin (without impersonation claims)
     const tokenPair = generateTokenPair({
-      userId: originalAdmin._id.toString(),
+      userId: originalAdmin.id.toString(),
       username: originalAdmin.username,
       role: originalAdmin.role,
       name: originalAdmin.name
     })
     
-    const creditUsed = await calculateCreditForUser(originalAdmin._id)
+    const creditUsed = await calculateCreditForUser(originalAdmin.id)
     const credit = buildCreditSummary(originalAdmin.creditLimit ?? 0, creditUsed)
 
     // Create response with original admin data
     const userData = {
-      id: originalAdmin._id,
+      id: originalAdmin.id,
       username: originalAdmin.username,
       email: originalAdmin.email,
       name: originalAdmin.name,
@@ -99,7 +96,7 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
       path: '/'
     })
     
-    response.cookies.set('userId', originalAdmin._id.toString(), {
+    response.cookies.set('userId', originalAdmin.id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -117,14 +114,14 @@ export const POST = asyncHandler(async function exitImpersonationHandler(request
     })
     
     // Log successful exit from impersonation
-    logAuthSuccess(originalAdmin._id.toString(), 'impersonation_exit', {
+    logAuthSuccess(originalAdmin.id.toString(), 'impersonation_exit', {
       previousTargetUserId: currentUser.userId,
       tokenId: tokenPair.tokenId
     })
     
     logger.logRequest('POST', '/api/auth/exit-impersonation', 200, Date.now() - startTime, {
       context: {
-        adminId: originalAdmin._id.toString(),
+        adminId: originalAdmin.id.toString(),
         previousTargetUserId: currentUser.userId
       }
     })

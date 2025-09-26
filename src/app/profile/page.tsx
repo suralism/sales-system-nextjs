@@ -1,43 +1,45 @@
-
 'use client'
 
 import { useEffect, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
-import { Form } from '@/components/Form'
+import { 
+  Card, 
+  Form, 
+  Input, 
+  Button, 
+  Typography, 
+  Space, 
+  Row, 
+  Col,
+  Divider,
+  message
+} from 'antd'
+import { UserOutlined, LockOutlined, PhoneOutlined, MailOutlined, SaveOutlined } from '@ant-design/icons'
 import { useAuth } from '@/contexts/AuthContext'
-import toast from 'react-hot-toast'
+
+const { Title, Text } = Typography
 
 export default function ProfilePage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    position: '',
-    phone: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  })
+  const [messageApi, contextHolder] = message.useMessage()
+  const [form] = Form.useForm()
 
   useEffect(() => {
     if (user) {
-      setFormData({
+      form.setFieldsValue({
         name: user.name,
         position: user.position,
         phone: user.phone,
-        email: user.email,
-        password: '',
-        confirmPassword: ''
+        email: user.email
       })
     }
-  }, [user])
+  }, [user, form])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      toast.error('รหัสผ่านไม่ตรงกัน')
+  const handleSubmit = async (values: any) => {
+    if (values.password && values.password !== values.confirmPassword) {
+      messageApi.error('รหัสผ่านไม่ตรงกัน')
       return
     }
 
@@ -45,14 +47,14 @@ export default function ProfilePage() {
     
     try {
       const submitData: Record<string, unknown> = {
-        name: formData.name,
-        position: formData.position,
-        phone: formData.phone,
-        email: formData.email
+        name: values.name,
+        position: values.position,
+        phone: values.phone,
+        email: values.email
       }
 
-      if (formData.password) {
-        submitData.password = formData.password
+      if (values.password) {
+        submitData.password = values.password
       }
       
       const response = await fetch(`/api/users/${user?.id}`, {
@@ -65,19 +67,15 @@ export default function ProfilePage() {
       })
 
       if (response.ok) {
-        toast.success('อัปเดตข้อมูลสำเร็จ')
-        setFormData({
-          ...formData,
-          password: '',
-          confirmPassword: ''
-        })
+        messageApi.success('อัปเดตข้อมูลสำเร็จ')
+        form.setFieldsValue({ password: '', confirmPassword: '' })
       } else {
         const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาด')
+        messageApi.error(error.error || 'เกิดข้อผิดพลาด')
       }
     } catch (error) {
       console.error('Update error:', error)
-      toast.error('เกิดข้อผิดพลาดในการอัปเดตข้อมูล')
+      messageApi.error('เกิดข้อผิดพลาดในการอัปเดตข้อมูล')
     } finally {
       setLoading(false)
     }
@@ -90,7 +88,17 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">👤 ข้อมูลส่วนตัว</h1>
           <p className="text-gray-600 mb-6">จัดการข้อมูลส่วนตัวและรหัสผ่านของคุณ</p>
 
-          <Form onSubmit={handleSubmit}>
+          <Form 
+            form={form} 
+            onFinish={handleSubmit} 
+            layout="vertical" 
+            initialValues={{
+              name: user?.name,
+              position: user?.position,
+              phone: user?.phone,
+              email: user?.email
+            }}
+          >
             <div className="space-y-6">
               {/* Personal Info Section */}
               <div className="bg-white rounded-lg shadow p-4">

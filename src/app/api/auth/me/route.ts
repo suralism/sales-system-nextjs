@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../../lib/database'
-import User, { IUser } from '../../../../../lib/models/User'
+import { UserModel } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 import { calculateCreditForUser, buildCreditSummary } from '../../../../../lib/credit'
 import { logger } from '../../../../../lib/logger'
@@ -16,12 +15,8 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    await connectDB()
-    
     // Get fresh user data from database
-    const userData = await User.findOne({ _id: user.userId })
-      .select('-password')
-      .lean<IUser>()
+    const userData = await UserModel.findById(user.userId)
     
     if (!userData || !userData.isActive) {
       return NextResponse.json(
@@ -30,12 +25,12 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const creditUsed = await calculateCreditForUser(userData._id)
+    const creditUsed = await calculateCreditForUser(userData.id)
     const credit = buildCreditSummary(userData.creditLimit ?? 0, creditUsed)
 
     return NextResponse.json({
       user: {
-        id: userData._id,
+        id: userData.id,
         username: userData.username,
         email: userData.email,
         name: userData.name,

@@ -1,51 +1,27 @@
-import mongoose from 'mongoose'
+import { createClient } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sales_system'
-
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local')
+if (!process.env.TURSO_DATABASE_URL) {
+  throw new Error('Please define the TURSO_DATABASE_URL environment variable')
 }
 
-interface MongooseCache {
-  conn: typeof mongoose | null
-  promise: Promise<typeof mongoose> | null
+let db: any
+
+try {
+  const client = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN || '',
+  })
+  
+  db = drizzle(client)
+  console.log('✅ Connected to SQLite database:', process.env.TURSO_DATABASE_URL)
+} catch (error) {
+  console.error('❌ Database connection failed:', (error as Error).message)
+  throw error
 }
 
-declare global {
-  var mongoose: MongooseCache | undefined
-}
+export { db }
 
-let cached = global.mongoose
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null }
-}
-
-async function connectDB(): Promise<typeof mongoose> {
-  if (cached!.conn) {
-    return cached!.conn
-  }
-
-  if (!cached!.promise) {
-    const opts = {
-      bufferCommands: false,
-    }
-
-    cached!.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('Connected to MongoDB')
-      return mongoose
-    })
-  }
-
-  try {
-    cached!.conn = await cached!.promise
-  } catch (e) {
-    cached!.promise = null
-    throw e
-  }
-
-  return cached!.conn
-}
-
-export default connectDB
+// For compatibility, export as default
+export default db
 

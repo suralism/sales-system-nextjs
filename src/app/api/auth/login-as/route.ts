@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../../lib/database'
-import User from '../../../../../lib/models/User'
+import { UserModel } from '../../../../../lib/models/User'
 import { getUserFromRequest } from '../../../../../lib/auth'
 import { generateTokenPair } from '../../../../../lib/authEnhanced'
 import { strictRateLimit } from '../../../../../lib/rateLimit'
@@ -29,8 +28,7 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
       throw new AuthenticationError('Unauthorized - Admin access required')
     }
     
-    await connectDB()
-    
+
     const body = await request.json()
     const { targetUserId } = body
     
@@ -42,8 +40,8 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
     const sanitizedTargetUserId = targetUserId.trim()
     
     // Find the target user to impersonate
-    const targetUser = await User.findOne({ 
-      _id: sanitizedTargetUserId,
+    const targetUser = await UserModel.findOne({ 
+      id: sanitizedTargetUserId,
       isActive: true,
       role: 'employee' // Only allow impersonating employees, not other admins
     })
@@ -58,7 +56,7 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
     
     // Generate token pair for impersonation with enhanced claims
     const tokenPair = generateTokenPair({
-      userId: targetUser._id.toString(),
+      userId: targetUser.id.toString(),
       username: targetUser.username,
       role: targetUser.role,
       name: targetUser.name,
@@ -68,12 +66,12 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
       isImpersonation: true
     })
     
-    const creditUsed = await calculateCreditForUser(targetUser._id)
+    const creditUsed = await calculateCreditForUser(targetUser.id)
     const credit = buildCreditSummary(targetUser.creditLimit ?? 0, creditUsed)
 
     // Create response with target user data
     const userData = {
-      id: targetUser._id,
+      id: targetUser.id,
       username: targetUser.username,
       email: targetUser.email,
       name: targetUser.name,
@@ -114,7 +112,7 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
       path: '/'
     })
     
-    response.cookies.set('userId', targetUser._id.toString(), {
+    response.cookies.set('userId', targetUser.id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -133,7 +131,7 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
     
     // Log successful impersonation
     logAuthSuccess(currentUser.userId, 'impersonation_start', {
-      targetUserId: targetUser._id.toString(),
+      targetUserId: targetUser.id.toString(),
       targetUsername: targetUser.username,
       tokenId: tokenPair.tokenId
     })
@@ -141,7 +139,7 @@ export const POST = asyncHandler(async function loginAsHandler(request: NextRequ
     logger.logRequest('POST', '/api/auth/login-as', 200, Date.now() - startTime, {
       context: {
         adminId: currentUser.userId,
-        targetUserId: targetUser._id.toString()
+        targetUserId: targetUser.id.toString()
       }
     })
     

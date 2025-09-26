@@ -279,30 +279,41 @@ async function getSalesSummary(dateFrom: Date, dateTo: Date) {
 }
 
 async function getInventorySummary() {
-  const result = await Inventory.aggregate([
-    { $match: { isActive: true } },
-    {
-      $group: {
-        _id: null,
-        totalProducts: { $sum: 1 },
-        totalStock: { $sum: '$currentStock' },
-        totalValue: { $sum: { $multiply: ['$currentStock', '$averageCost'] } },
-        lowStockCount: {
-          $sum: { $cond: [{ $lte: ['$currentStock', '$reorderPoint'] }, 1, 0] }
-        },
-        outOfStockCount: {
-          $sum: { $cond: [{ $eq: ['$currentStock', 0] }, 1, 0] }
-        }
+  try {
+    const inventoryItems = await Inventory.find({ isActive: true })
+    
+    const summary = inventoryItems.reduce((acc, item) => {
+      acc.totalProducts += 1
+      acc.totalStock += item.currentStock || 0
+      acc.totalValue += (item.currentStock || 0) * (item.averageCost || 0)
+      
+      if ((item.currentStock || 0) <= (item.reorderPoint || 0)) {
+        acc.lowStockCount += 1
       }
+      
+      if ((item.currentStock || 0) === 0) {
+        acc.outOfStockCount += 1
+      }
+      
+      return acc
+    }, {
+      totalProducts: 0,
+      totalStock: 0,
+      totalValue: 0,
+      lowStockCount: 0,
+      outOfStockCount: 0
+    })
+    
+    return summary
+  } catch (error) {
+    console.error('Error getting inventory summary:', error)
+    return {
+      totalProducts: 0,
+      totalStock: 0,
+      totalValue: 0,
+      lowStockCount: 0,
+      outOfStockCount: 0
     }
-  ])
-  
-  return result[0] || {
-    totalProducts: 0,
-    totalStock: 0,
-    totalValue: 0,
-    lowStockCount: 0,
-    outOfStockCount: 0
   }
 }
 
@@ -430,44 +441,55 @@ async function getSalesTrends(dateFrom: Date, dateTo: Date) {
 }
 
 async function getRecentActivity(limit: number) {
-  const [recentSales, recentMovements] = await Promise.all([
-    Sale.find({ status: { $ne: 'cancelled' } })
-      .sort({ saleDate: -1 })
-      .limit(limit)
-      .populate('createdBy', 'name username')
-      .lean(),
-    StockMovement.find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('productId', 'name sku')
-      .populate('userId', 'name username')
-      .lean()
-  ])
-  
-  return {
-    recentSales,
-    recentMovements
+  try {
+    const [recentSales, recentMovements] = await Promise.all([
+      Sale.find({}, { limit, sort: { saleDate: -1 } }),
+      StockMovement.find({}).then(movements => 
+        movements
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, limit)
+      )
+    ])
+    
+    return {
+      recentSales,
+      recentMovements
+    }
+  } catch (error) {
+    console.error('Error getting recent activity:', error)
+    return {
+      recentSales: [],
+      recentMovements: []
+    }
   }
 }
 
 async function getSystemAlerts() {
-  const [lowStock, outOfStock, expiringSoon] = await Promise.all([
-    Inventory.countDocuments({ 
-      $expr: { $lte: ['$currentStock', '$reorderPoint'] },
-      isActive: true 
-    }),
-    Inventory.countDocuments({ 
-      currentStock: 0,
-      isActive: true 
-    }),
-    // This would need to be implemented based on product expiry tracking
-    Promise.resolve(0)
-  ])
-  
-  return {
-    lowStock,
-    outOfStock,
-    expiringSoon
+  try {
+    const inventoryItems = await Inventory.find({ isActive: true })
+    
+    const lowStock = inventoryItems.filter(item => 
+      (item.currentStock || 0) <= (item.reorderPoint || 0)
+    ).length
+    
+    const outOfStock = inventoryItems.filter(item => 
+      (item.currentStock || 0) === 0
+    ).length
+    
+    const expiringSoon = 0 // To be implemented based on product expiry tracking
+    
+    return {
+      lowStock,
+      outOfStock,
+      expiringSoon
+    }
+  } catch (error) {
+    console.error('Error getting system alerts:', error)
+    return {
+      lowStock: 0,
+      outOfStock: 0,
+      expiringSoon: 0
+    }
   }
 }
 
@@ -503,14 +525,17 @@ async function getSalesByCategory(dateFrom: Date, dateTo: Date) {
 }
 
 async function getLowStockItems() {
-  return await Inventory.find({
-    $expr: { $lte: ['$currentStock', '$reorderPoint'] },
-    isActive: true
-  })
-  .populate('productId', 'name sku category')
-  .sort({ currentStock: 1 })
-  .limit(20)
-  .lean()
+  try {
+    const inventoryItems = await Inventory.find({ isActive: true })
+    
+    return inventoryItems
+      .filter(item => (item.currentStock || 0) <= (item.reorderPoint || 0))
+      .sort((a, b) => (a.currentStock || 0) - (b.currentStock || 0))
+      .slice(0, 20)
+  } catch (error) {
+    console.error('Error getting low stock items:', error)
+    return []
+  }
 }
 
 // More helper functions would be implemented as needed...

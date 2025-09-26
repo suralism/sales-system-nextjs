@@ -1,6 +1,9 @@
 import React from 'react'
+import { Card as AntCard, CardProps as AntCardProps, Typography } from 'antd'
 
-interface CardProps {
+const { Title, Text } = Typography
+
+interface CardProps extends Omit<AntCardProps, 'size'> {
   children: React.ReactNode
   className?: string
   padding?: 'none' | 'sm' | 'md' | 'lg'
@@ -24,50 +27,33 @@ const Card: React.FC<CardProps> = ({
   onClick,
   ...props
 }) => {
-  const paddingClasses: Record<string, string> = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4 sm:p-6',
-    lg: 'p-6 sm:p-8'
+  const customStyles: React.CSSProperties = {
+    cursor: clickable ? 'pointer' : undefined,
+    transition: 'all 0.2s ease',
+    ...(hover && {
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+      }
+    })
   }
 
-  const shadowClasses: Record<string, string> = {
-    none: '',
-    sm: 'shadow-sm',
-    md: 'shadow-md',
-    lg: 'shadow-lg',
-    xl: 'shadow-xl'
-  }
-
-  const roundedClasses: Record<string, string> = {
-    none: '',
-    sm: 'rounded-md',
-    md: 'rounded-lg',
-    lg: 'rounded-xl',
-    xl: 'rounded-2xl'
-  }
-
-  const baseClasses = `
-    bg-white dark:bg-gray-800 transition-all duration-200
-    ${paddingClasses[padding]}
-    ${shadowClasses[shadow]}
-    ${roundedClasses[rounded]}
-    ${border ? 'border border-gray-200 dark:border-gray-700' : ''}
-    ${hover ? 'hover:shadow-lg hover:-translate-y-1 dark:hover:shadow-xl dark:hover:shadow-gray-900/20' : ''}
-    ${clickable ? 'cursor-pointer active:scale-[0.98]' : ''}
-    ${className}
-  `
-
-  const CardComponent = clickable ? 'button' : 'div'
+  const cardClassName = [
+    className,
+    hover ? 'hover-card' : '',
+    clickable ? 'clickable-card' : ''
+  ].filter(Boolean).join(' ')
 
   return (
-    <CardComponent
-      className={baseClasses.replace(/\s+/g, ' ').trim()}
-      onClick={onClick}
+    <AntCard
+      className={cardClassName}
+      style={customStyles}
+      onClick={clickable ? onClick : undefined}
+      hoverable={hover || clickable}
       {...props}
     >
       {children}
-    </CardComponent>
+    </AntCard>
   )
 }
 
@@ -78,7 +64,7 @@ interface CardHeaderProps {
 }
 
 export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => (
-  <div className={`mb-4 ${className}`}>
+  <div className={`ant-card-head-wrapper ${className}`}>
     {children}
   </div>
 )
@@ -94,17 +80,17 @@ export const CardTitle: React.FC<CardTitleProps> = ({
   className = '',
   size = 'lg'
 }) => {
-  const sizeClasses: Record<string, string> = {
-    sm: 'text-base',
-    md: 'text-lg',
-    lg: 'text-xl',
-    xl: 'text-2xl'
-  }
+  const level = {
+    sm: 5,
+    md: 4,
+    lg: 3,
+    xl: 2
+  }[size] as 1 | 2 | 3 | 4 | 5
 
   return (
-    <h3 className={`font-semibold text-gray-900 dark:text-white ${sizeClasses[size]} ${className}`}>
+    <Title level={level} className={className} style={{ margin: 0 }}>
       {children}
-    </h3>
+    </Title>
   )
 }
 
@@ -114,7 +100,7 @@ interface CardContentProps {
 }
 
 export const CardContent: React.FC<CardContentProps> = ({ children, className = '' }) => (
-  <div className={`text-gray-600 dark:text-gray-300 ${className}`}>
+  <div className={`ant-card-body ${className}`}>
     {children}
   </div>
 )
@@ -125,7 +111,7 @@ interface CardFooterProps {
 }
 
 export const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => (
-  <div className={`mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 ${className}`}>
+  <div className={`ant-card-actions ${className}`} style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0' }}>
     {children}
   </div>
 )

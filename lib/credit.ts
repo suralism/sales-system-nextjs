@@ -1,5 +1,4 @@
-import mongoose from 'mongoose'
-import Sale from './models/Sale'
+import SaleModel from './models/Sale'
 
 export interface CreditSummary {
   creditLimit: number
@@ -7,40 +6,28 @@ export interface CreditSummary {
   creditRemaining: number
 }
 
-function normalizeToObjectId(id: string | mongoose.Types.ObjectId): mongoose.Types.ObjectId | null {
+function normalizeToUserId(id: string): string | null {
   if (!id) {
     return null
   }
-
-  if (id instanceof mongoose.Types.ObjectId) {
-    return id
-  }
-
-  try {
-    return new mongoose.Types.ObjectId(String(id))
-  } catch {
-    return null
-  }
+  return String(id)
 }
 
 export async function calculateCreditUsage(
-  userIds: Array<string | mongoose.Types.ObjectId>
+  userIds: Array<string>
 ): Promise<Map<string, number>> {
-  const objectIds = userIds
-    .map((id) => normalizeToObjectId(id))
-    .filter((id): id is mongoose.Types.ObjectId => id !== null)
+  const normalizedIds = userIds
+    .map((id) => normalizeToUserId(id))
+    .filter((id): id is string => id !== null)
 
-  if (objectIds.length === 0) {
+  if (normalizedIds.length === 0) {
     return new Map()
   }
 
-  const usage = await Sale.aggregate<{
-    _id: mongoose.Types.ObjectId
-    totalPending: number
-  }>([
+  const usage = await SaleModel.aggregate([
     {
       $match: {
-        employeeId: { $in: objectIds },
+        employeeId: { $in: normalizedIds },
         type: 'เบิก',
         settled: false
       }
@@ -66,28 +53,19 @@ export async function calculateCreditUsage(
 }
 
 export async function calculateCreditForUser(
-  userId: string | mongoose.Types.ObjectId
+  userId: string
 ): Promise<number> {
   const usageMap = await calculateCreditUsage([userId])
-  const normalizedId = normalizeToObjectId(userId)
-  if (!normalizedId) {
-    return 0
-  }
-
-  return usageMap.get(normalizedId.toString()) || 0
+  return usageMap.get(userId) || 0
 }
 
 export function buildCreditSummary(
-  limit: number | null | undefined,
-  used: number
+  creditLimit: number,
+  creditUsed: number
 ): CreditSummary {
-  const safeLimit = typeof limit === 'number' && !Number.isNaN(limit) && limit > 0 ? limit : 0
-  const safeUsed = typeof used === 'number' && used > 0 ? used : 0
-  const remaining = Math.max(safeLimit - safeUsed, 0)
-
   return {
-    creditLimit: safeLimit,
-    creditUsed: safeUsed,
-    creditRemaining: remaining
+    creditLimit,
+    creditUsed,
+    creditRemaining: Math.max(0, creditLimit - creditUsed)
   }
 }

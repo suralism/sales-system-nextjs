@@ -1,43 +1,41 @@
 'use client'
 
-interface PaginationProps {
+import { Pagination as AntPagination, PaginationProps as AntPaginationProps } from 'antd'
+
+interface PaginationProps extends Omit<AntPaginationProps, 'onChange' | 'current' | 'total' | 'pageSize'> {
   page: number
   total: number
   limit: number
   onPageChange: (page: number) => void
 }
 
-export default function Pagination({ page, total, limit, onPageChange }: PaginationProps) {
+export default function Pagination({ page, total, limit, onPageChange, ...props }: PaginationProps) {
   const totalPages = Math.ceil(total / limit)
   if (totalPages <= 1) return null
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
-
   return (
-    <div className="flex justify-center mt-4 space-x-1">
-      <button
-        onClick={() => onPageChange(page - 1)}
-        disabled={page === 1}
-        className="px-3 py-1 rounded-md bg-gray-200 text-gray-700 disabled:opacity-50"
-      >
-        ก่อนหน้า
-      </button>
-      {pages.map(p => (
-        <button
-          key={p}
-          onClick={() => onPageChange(p)}
-          className={`px-3 py-1 rounded-md ${p === page ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-        >
-          {p}
-        </button>
-      ))}
-      <button
-        onClick={() => onPageChange(page + 1)}
-        disabled={page === totalPages}
-        className="px-3 py-1 rounded-md bg-gray-200 text-gray-700 disabled:opacity-50"
-      >
-        ถัดไป
-      </button>
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+      <AntPagination
+        current={page}
+        total={total}
+        pageSize={limit}
+        onChange={onPageChange}
+        showSizeChanger={false}
+        showQuickJumper={false}
+        showTotal={(total, range) => 
+          `${range[0]}-${range[1]} ของ ${total} รายการ`
+        }
+        itemRender={(current, type, originalElement) => {
+          if (type === 'prev') {
+            return <span>ก่อนหน้า</span>
+          }
+          if (type === 'next') {
+            return <span>ถัดไป</span>
+          }
+          return originalElement
+        }}
+        {...props}
+      />
     </div>
   )
 }

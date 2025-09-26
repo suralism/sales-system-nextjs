@@ -5,6 +5,14 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import PWAManager from '@/components/PWAManager'
+import { AntdRegistry } from '@ant-design/nextjs-registry'
+import { ConfigProvider } from 'antd'
+import locale from 'antd/locale/th_TH'
+import dayjs from 'dayjs'
+import 'dayjs/locale/th'
+
+// Set dayjs locale to Thai
+dayjs.locale('th')
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -108,36 +116,49 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <ThemeProvider>
-            <PWAManager />
-            <Toaster
-              position="top-center"
-              reverseOrder={false}
-              toastOptions={{
-                className:
-                  'shadow-lg rounded-lg px-4 py-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 animate-toast-slide',
-                success: {
-                  className:
-                    'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800',
-                  iconTheme: {
-                    primary: '#10B981',
-                    secondary: '#ffffff'
-                  }
-                },
-                error: {
-                  className:
-                    'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800',
-                  iconTheme: {
-                    primary: '#EF4444',
-                    secondary: '#ffffff'
-                  }
-                }
-              }}
-            />
-            {children}
-          </ThemeProvider>
-        </AuthProvider>
+        <AntdRegistry>
+          <ConfigProvider 
+            locale={locale}
+            theme={{
+              token: {
+                colorPrimary: '#2563eb',
+                borderRadius: 6,
+                fontFamily: 'var(--font-geist-sans)',
+              },
+            }}
+          >
+            <AuthProvider>
+              <ThemeProvider>
+                <PWAManager />
+                <Toaster
+                  position="top-center"
+                  reverseOrder={false}
+                  toastOptions={{
+                    className:
+                      'shadow-lg rounded-lg px-4 py-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 animate-toast-slide',
+                    success: {
+                      className:
+                        'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800',
+                      iconTheme: {
+                        primary: '#10B981',
+                        secondary: '#ffffff'
+                      }
+                    },
+                    error: {
+                      className:
+                        'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800',
+                      iconTheme: {
+                        primary: '#EF4444',
+                        secondary: '#ffffff'
+                      }
+                    }
+                  }}
+                />
+                {children}
+              </ThemeProvider>
+            </AuthProvider>
+          </ConfigProvider>
+        </AntdRegistry>
       </body>
     </html>
   )

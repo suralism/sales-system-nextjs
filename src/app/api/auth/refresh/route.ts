@@ -25,15 +25,29 @@ export const POST = asyncHandler(async function refreshHandler(request: NextRequ
       throw new AuthenticationError('User information not available')
     }
     
-    const user = await User.findById(userId).select('-password')
-    if (!user || !user.isActive) {
+    const userRecord = await User.findById(userId)
+    if (!userRecord || !userRecord.isActive) {
       logAuthFailure('refresh_invalid_user', { userId })
       throw new AuthenticationError('User not found or inactive')
     }
     
+    // Remove password from user object for security
+    const user = {
+      id: userRecord.id,
+      username: userRecord.username,
+      role: userRecord.role,
+      name: userRecord.name,
+      email: userRecord.email,
+      position: userRecord.position,
+      phone: userRecord.phone,
+      priceLevel: userRecord.priceLevel,
+      creditLimit: userRecord.creditLimit,
+      isActive: userRecord.isActive
+    }
+    
     // Refresh the token
     const tokenPair = refreshAccessToken(refreshToken, {
-      userId: user._id.toString(),
+      userId: user.id,
       username: user.username,
       role: user.role,
       name: user.name
@@ -66,7 +80,7 @@ export const POST = asyncHandler(async function refreshHandler(request: NextRequ
     })
     
     // Update userId cookie
-    response.cookies.set('userId', user._id.toString(), {
+    response.cookies.set('userId', user.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -74,12 +88,12 @@ export const POST = asyncHandler(async function refreshHandler(request: NextRequ
       path: '/'
     })
     
-    logAuthSuccess(user._id.toString(), 'token_refresh', {
+    logAuthSuccess(user.id, 'token_refresh', {
       tokenId: tokenPair.tokenId
     })
     
     logger.logRequest('POST', '/api/auth/refresh', 200, Date.now() - startTime, {
-      userId: user._id.toString()
+      userId: user.id
     })
     
     return response

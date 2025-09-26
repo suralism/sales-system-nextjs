@@ -1,7 +1,10 @@
-import mongoose from 'mongoose'
+import { eq, and, desc, gte, lte, count } from 'drizzle-orm'
+import db from '../database'
+import { sales, saleItems, type Sale, type NewSale, type SaleItem, type NewSaleItem } from '../schema'
 
 export interface ISaleItem {
-  productId: mongoose.Types.ObjectId
+  id?: string
+  productId: string
   productName: string
   pricePerUnit: number
   withdrawal: number
@@ -10,11 +13,11 @@ export interface ISaleItem {
   totalPrice: number
 }
 
-export interface ISale extends mongoose.Document {
-  _id: string
-  employeeId: mongoose.Types.ObjectId
+export interface ISale {
+  id: string
+  employeeId: string
   employeeName: string
-  saleDate: Date
+  saleDate: string
   type: 'เบิก' | 'คืน'
   items: ISaleItem[]
   totalAmount: number
@@ -28,160 +31,300 @@ export interface ISale extends mongoose.Document {
   expenseAmount: number
   awaitingTransfer: number
   settled: boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
-const SaleItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  productName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  pricePerUnit: {
-    type: Number,
-    required: [true, 'Price per unit is required'],
-    min: [0, 'Price per unit cannot be negative']
-  },
-  withdrawal: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  return: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  defective: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  totalPrice: {
-    type: Number,
-    required: [true, 'Total price is required'],
-    min: [0, 'Total price cannot be negative']
-  }
-}, { _id: false })
-
-const SaleSchema = new mongoose.Schema({
-  employeeId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Employee ID is required']
-  },
-  employeeName: {
-    type: String,
-    required: [true, 'Employee name is required'],
-    trim: true
-  },
-  saleDate: {
-    type: Date,
-    required: [true, 'Sale date is required'],
-    default: Date.now
-  },
-  type: {
-    type: String,
-    enum: ['เบิก', 'คืน'],
-    required: [true, 'Sale type is required']
-  },
-  items: {
-    type: [SaleItemSchema],
-    required: [true, 'Sale items are required'],
-    validate: {
-      validator: function(items: ISaleItem[]) {
-        return items && items.length > 0
-      },
-      message: 'At least one sale item is required'
+export class SaleModel {
+  static async findOne(criteria: Partial<Sale>): Promise<ISale | null> {
+    try {
+      let result: Sale[] = []
+      
+      if ('id' in criteria && criteria.id) {
+        result = await db.select().from(sales).where(eq(sales.id, criteria.id)).limit(1)
+      } else if ('employeeId' in criteria && 'type' in criteria && 'settled' in criteria) {
+        result = await db.select().from(sales).where(
+          and(
+            eq(sales.employeeId, criteria.employeeId!),
+            eq(sales.type, criteria.type!),
+            eq(sales.settled, criteria.settled!)
+          )
+        ).limit(1)
+      }
+      
+      const sale = result[0]
+      if (!sale) return null
+      
+      // Get sale items
+      const items = await db.select().from(saleItems).where(eq(saleItems.saleId, sale.id))
+      
+      return {
+        ...sale,
+        notes: sale.notes || undefined,
+        items: items.map((item: any) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          pricePerUnit: item.pricePerUnit,
+          withdrawal: item.withdrawal,
+          return: item.return,
+          defective: item.defective,
+          totalPrice: item.totalPrice
+        }))
+      }
+    } catch (error) {
+      console.error('Error finding sale:', error)
+      return null
     }
-  },
-  totalAmount: {
-    type: Number,
-    required: [true, 'Total amount is required'],
-    min: [0, 'Total amount cannot be negative']
-  },
-  paidAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Paid amount cannot be negative']
-  },
-  paymentMethod: {
-    type: String,
-    enum: ['cash', 'transfer', 'customer_pending'],
-    default: 'cash'
-  },
-  pendingAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Pending amount cannot be negative']
-  },
-  cashAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Cash amount cannot be negative']
-  },
-  transferAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Transfer amount cannot be negative']
-  },
-  customerPending: {
-    type: Number,
-    default: 0,
-    min: [0, 'Customer pending cannot be negative']
-  },
-  expenseAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Expense amount cannot be negative']
-  },
-  awaitingTransfer: {
-    type: Number,
-    default: 0,
-    min: [0, 'Awaiting transfer cannot be negative']
-  },
-  notes: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Notes cannot exceed 500 characters']
-  },
-  settled: {
-    type: Boolean,
-    default: false
   }
-}, {
-  timestamps: true
-})
 
-// Index for better query performance
-SaleSchema.index({ employeeId: 1 })
-SaleSchema.index({ saleDate: -1 })
-SaleSchema.index({ type: 1 })
-SaleSchema.index({ employeeId: 1, saleDate: -1 })
-// Ensure only one open withdrawal bill per employee
-SaleSchema.index(
-  { employeeId: 1, type: 1, settled: 1 },
-  { unique: true, partialFilterExpression: { type: 'เบิก', settled: false } }
-)
-
-// Pre-save middleware to calculate total amount
-SaleSchema.pre('save', function(next) {
-  if (this.isModified('items')) {
-    this.totalAmount = this.items.reduce((total, item) => {
-      return total + (item.withdrawal * item.pricePerUnit);
-    }, 0)
+  static async findById(id: string): Promise<ISale | null> {
+    return this.findOne({ id })
   }
-  next()
-})
 
-export default mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)
+  static async create(saleData: Omit<NewSale, 'id' | 'createdAt' | 'updatedAt'> & { items: ISaleItem[] }): Promise<ISale> {
+    try {
+      // Calculate total amount from items
+      const totalAmount = saleData.items.reduce((total, item) => {
+        return total + (item.withdrawal * item.pricePerUnit)
+      }, 0)
+      
+      const saleResult = await db.insert(sales).values({
+        employeeId: saleData.employeeId,
+        employeeName: saleData.employeeName,
+        saleDate: saleData.saleDate || new Date().toISOString(),
+        type: saleData.type,
+        totalAmount,
+        notes: saleData.notes,
+        paidAmount: saleData.paidAmount || 0,
+        paymentMethod: saleData.paymentMethod || 'cash',
+        pendingAmount: saleData.pendingAmount || 0,
+        cashAmount: saleData.cashAmount || 0,
+        transferAmount: saleData.transferAmount || 0,
+        customerPending: saleData.customerPending || 0,
+        expenseAmount: saleData.expenseAmount || 0,
+        awaitingTransfer: saleData.awaitingTransfer || 0,
+        settled: saleData.settled || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      const sale = saleResult[0]
+      
+      // Insert sale items
+      if (saleData.items && saleData.items.length > 0) {
+        const itemValues = saleData.items.map(item => ({
+          saleId: sale.id,
+          productId: item.productId,
+          productName: item.productName,
+          pricePerUnit: item.pricePerUnit,
+          withdrawal: item.withdrawal,
+          return: item.return,
+          defective: item.defective,
+          totalPrice: item.totalPrice,
+        }))
+        
+        await db.insert(saleItems).values(itemValues)
+      }
+      
+      return {
+        ...sale,
+        notes: sale.notes || undefined,
+        items: saleData.items || []
+      }
+    } catch (error) {
+      console.error('Error creating sale:', error)
+      throw error
+    }
+  }
 
+  static async find(query: any = {}, options: { skip?: number, limit?: number, sort?: any } = {}): Promise<ISale[]> {
+    try {
+      // Simple approach: execute the base query and then filter in memory if needed
+      let salesResult = await db.select().from(sales)
+      
+      // Apply filters
+      if (query.employeeId) {
+        salesResult = salesResult.filter((sale: any) => sale.employeeId === query.employeeId)
+      }
+      if (query.type) {
+        salesResult = salesResult.filter((sale: any) => sale.type === query.type)
+      }
+      if (typeof query.settled === 'boolean') {
+        salesResult = salesResult.filter((sale: any) => sale.settled === query.settled)
+      }
+      if (query.saleDate && query.saleDate.$gte && query.saleDate.$lte) {
+        const start = query.saleDate.$gte.toISOString()
+        const end = query.saleDate.$lte.toISOString()
+        salesResult = salesResult.filter((sale: any) => sale.saleDate >= start && sale.saleDate <= end)
+      }
+      
+      // Apply sorting
+      if (options.sort && options.sort.saleDate === -1) {
+        salesResult.sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+      }
+      
+      // Apply pagination
+      if (options.skip) {
+        salesResult = salesResult.slice(options.skip)
+      }
+      if (options.limit) {
+        salesResult = salesResult.slice(0, options.limit)
+      }
+      
+      // Get all sale items for these sales
+      if (salesResult.length === 0) return []
+      
+      const allItems = await db.select().from(saleItems)
+      
+      return salesResult.map((sale: any) => ({
+        ...sale,
+        notes: sale.notes || undefined,
+        items: allItems
+          .filter((item: any) => item.saleId === sale.id)
+          .map((item: any) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            pricePerUnit: item.pricePerUnit,
+            withdrawal: item.withdrawal,
+            return: item.return,
+            defective: item.defective,
+            totalPrice: item.totalPrice
+          }))
+      }))
+    } catch (error) {
+      console.error('Error finding sales:', error)
+      return []
+    }
+  }
+
+  static async countDocuments(query: any = {}): Promise<number> {
+    try {
+      let salesResult = await db.select().from(sales)
+      
+      // Apply filters
+      if (query.employeeId) {
+        salesResult = salesResult.filter((sale: any) => sale.employeeId === query.employeeId)
+
+      }
+      if (query.type) {
+        salesResult = salesResult.filter((sale: any) => sale.type === query.type)
+      }
+      if (typeof query.settled === 'boolean') {
+        salesResult = salesResult.filter((sale: any) => sale.settled === query.settled)
+      }
+      if (query.saleDate && query.saleDate.$gte && query.saleDate.$lte) {
+        const start = query.saleDate.$gte.toISOString()
+        const end = query.saleDate.$lte.toISOString()
+        salesResult = salesResult.filter((sale: any) => sale.saleDate >= start && sale.saleDate <= end)
+      }
+      
+      return salesResult.length
+    } catch (error) {
+      console.error('Error counting sales:', error)
+      return 0
+    }
+  }
+
+  static async updateById(id: string, updates: Partial<NewSale> & { items?: ISaleItem[] }): Promise<ISale | null> {
+    try {
+      const saleUpdate: Partial<NewSale> = {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      }
+      
+      const result = await db.update(sales)
+        .set(saleUpdate)
+        .where(eq(sales.id, id))
+        .returning()
+      
+      const sale = result[0]
+      if (!sale) return null
+      
+      // Update items if provided
+      if (updates.items) {
+        // Delete existing items
+        await db.delete(saleItems).where(eq(saleItems.saleId, id))
+        
+        // Insert new items
+        if (updates.items.length > 0) {
+          const itemValues = updates.items.map(item => ({
+            saleId: id,
+            productId: item.productId,
+            productName: item.productName,
+            pricePerUnit: item.pricePerUnit,
+            withdrawal: item.withdrawal,
+            return: item.return,
+            defective: item.defective,
+            totalPrice: item.totalPrice,
+          }))
+          
+          await db.insert(saleItems).values(itemValues)
+        }
+      }
+      
+      // Get updated items
+      const items = await db.select().from(saleItems).where(eq(saleItems.saleId, id))
+      
+      return {
+        ...sale,
+        notes: sale.notes || undefined,
+        items: items.map((item: any) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          pricePerUnit: item.pricePerUnit,
+          withdrawal: item.withdrawal,
+          return: item.return,
+          defective: item.defective,
+          totalPrice: item.totalPrice
+        }))
+      }
+    } catch (error) {
+      console.error('Error updating sale:', error)
+      return null
+    }
+  }
+
+  static async aggregate(pipeline: any[]): Promise<any[]> {
+    try {
+      // Simplified aggregation for credit calculations
+      if (pipeline.length > 0 && pipeline[0].$match) {
+        const match = pipeline[0].$match
+        
+        if (match.employeeId && match.employeeId.$in) {
+          // For credit calculations
+          if (match.type === 'เบิก' && match.settled === false) {
+            const allSales = await db.select().from(sales)
+            const filteredSales = allSales.filter((sale: any) => 
+              match.employeeId.$in.includes(sale.employeeId) &&
+              sale.type === 'เบิก' &&
+              sale.settled === false
+            )
+            
+            const grouped = filteredSales.reduce((acc: any, sale: any) => {
+              if (!acc[sale.employeeId]) {
+                acc[sale.employeeId] = 0
+              }
+              acc[sale.employeeId] += sale.pendingAmount || sale.totalAmount
+              return acc
+            }, {} as Record<string, number>)
+            
+            return Object.entries(grouped).map(([employeeId, totalPending]) => ({
+              _id: employeeId,
+              totalPending
+            }))
+          }
+        }
+      }
+      
+      return []
+    } catch (error) {
+      console.error('Error in aggregate:', error)
+      return []
+    }
+  }
+}
+
+export default SaleModel

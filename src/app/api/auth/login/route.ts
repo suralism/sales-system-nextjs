@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '../../../../../lib/database'
-import User from '../../../../../lib/models/User'
+import { UserModel } from '../../../../../lib/models/User'
 import { comparePassword } from '../../../../../lib/auth'
 import { generateTokenPair } from '../../../../../lib/authEnhanced'
 import { authRateLimit } from '../../../../../lib/rateLimit'
@@ -32,8 +31,6 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
   const startTime = Date.now()
   
   try {
-    await connectDB()
-    
     // Validate and sanitize input
     const validateLogin = createValidationMiddleware(loginValidationSchema)
     const validation = await validateLogin(request)
@@ -54,12 +51,9 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
     })
     
     // Find user by username (case insensitive)
-    const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${username}$`, 'i') },
-      isActive: true 
-    })
+    const user = await UserModel.findOne({ username: username as string })
     
-    if (!user) {
+    if (!user || !user.isActive) {
       logAuthFailure('invalid_username', { username: username })
       throw new AuthenticationError('Invalid username or password')
     }
@@ -69,7 +63,7 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
     
     if (!isPasswordValid) {
       logAuthFailure('invalid_password', { 
-        userId: user._id.toString(),
+        userId: user.id,
         username: username 
       })
       throw new AuthenticationError('Invalid username or password')
@@ -77,18 +71,18 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
     
     // Generate token pair
     const tokenPair = generateTokenPair({
-      userId: user._id.toString(),
+      userId: user.id,
       username: user.username,
       role: user.role,
       name: user.name
     })
     
-    const creditUsed = await calculateCreditForUser(user._id)
+    const creditUsed = await calculateCreditForUser(user.id)
     const credit = buildCreditSummary(user.creditLimit ?? 0, creditUsed)
 
     // Create response with user data (excluding password)
     const userData = {
-      id: user._id,
+      id: user.id,
       username: user.username,
       email: user.email,
       name: user.name,
@@ -123,14 +117,14 @@ export const POST = asyncHandler(async function loginHandler(request: NextReques
       path: '/'
     })
     
-    logAuthSuccess(user._id.toString(), 'login', {
+    logAuthSuccess(user.id, 'login', {
       username: user.username,
       role: user.role,
       tokenId: tokenPair.tokenId
     })
     
     logger.logRequest('POST', '/api/auth/login', 200, Date.now() - startTime, {
-      userId: user._id.toString()
+      userId: user.id
     })
     
     return response

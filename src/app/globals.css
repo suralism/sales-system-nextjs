@@ -1,5 +1,48 @@
 @import "tailwindcss";
 
+/* Reset some TailwindCSS styles that might conflict with Ant Design */
+* {
+  box-sizing: border-box;
+}
+
+/* Ant Design custom overrides */
+.ant-layout {
+  background: var(--background) !important;
+}
+
+.ant-layout-content {
+  background: var(--background) !important;
+}
+
+.ant-menu {
+  background: var(--background) !important;
+}
+
+.ant-card {
+  border-radius: 8px;
+}
+
+.ant-btn {
+  border-radius: 6px;
+}
+
+.ant-input {
+  border-radius: 6px;
+}
+
+.ant-select-selector {
+  border-radius: 6px !important;
+}
+
+.ant-table {
+  border-radius: 8px;
+}
+
+/* Thai language support */
+.ant-typography {
+  font-family: var(--font-geist-sans), 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
+}
+
 @theme {
   --default-transition-duration: 200ms;
   --default-font-family: var(--font-geist-sans), system-ui, sans-serif;

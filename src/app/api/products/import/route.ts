@@ -71,10 +71,11 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      const existingProduct = await Product.findOne({
-        name: { $regex: new RegExp(`^${name}$`, 'i') },
-        isActive: true
-      })
+      // Simplified product check - just check if any products exist with this name
+      const existingProducts = await Product.find({})
+      const existingProduct = existingProducts.find(p => 
+        p.name.toLowerCase() === name.toLowerCase() && p.isActive
+      )
 
       if (existingProduct) {
         skipped++

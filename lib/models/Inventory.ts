@@ -1,4 +1,25 @@
-import mongoose from 'mongoose'
+import { eq, and } from 'drizzle-orm'
+import db from '../database'
+import {
+  inventory,
+  stockMovements,
+  suppliers,
+  purchaseOrders,
+  purchaseOrderItems,
+  stockAlerts,
+  type Inventory as InventoryType,
+  type NewInventory,
+  type StockMovement as StockMovementType,
+  type NewStockMovement,
+  type Supplier as SupplierType,
+  type NewSupplier,
+  type PurchaseOrder as PurchaseOrderType,
+  type NewPurchaseOrder,
+  type PurchaseOrderItem,
+  type NewPurchaseOrderItem,
+  type StockAlert as StockAlertType,
+  type NewStockAlert
+} from '../schema'
 
 // Stock Movement Types
 export enum MovementType {
@@ -11,491 +32,330 @@ export enum MovementType {
   EXPIRED = 'expired'          // Expired goods (stock out)
 }
 
-// Stock Movement Schema
-const stockMovementSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true,
-    index: true
-  },
-  type: {
-    type: String,
-    enum: Object.values(MovementType),
-    required: true
-  },
-  quantity: {
-    type: Number,
-    required: true
-  },
-  previousStock: {
-    type: Number,
-    required: true
-  },
-  newStock: {
-    type: Number,
-    required: true
-  },
-  unitCost: {
-    type: Number,
-    default: 0
-  },
-  totalCost: {
-    type: Number,
-    default: 0
-  },
-  reference: {
-    type: String, // Sale ID, Purchase Order, etc.
-    index: true
-  },
-  reason: {
-    type: String,
-    maxlength: 500
-  },
-  location: {
-    type: String,
-    default: 'main'
-  },
-  batchNumber: {
-    type: String
-  },
-  expiryDate: {
-    type: Date
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  approvedAt: {
-    type: Date
-  },
-  isApproved: {
-    type: Boolean,
-    default: true // Most movements are auto-approved except adjustments
+export class StockMovementModel {
+  static async find(criteria: Partial<StockMovementType> = {}): Promise<StockMovementType[]> {
+    try {
+      if (Object.keys(criteria).length === 0) {
+        return await db.select().from(stockMovements)
+      }
+      
+      let result = await db.select().from(stockMovements)
+      
+      if ('productId' in criteria && criteria.productId) {
+        result = result.filter((item: any) => item.productId === criteria.productId)
+      }
+      if ('type' in criteria && criteria.type) {
+        result = result.filter((item: any) => item.type === criteria.type)
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error finding stock movements:', error)
+      return []
+    }
   }
-}, {
-  timestamps: true
-})
 
-// Inventory Summary Schema (current stock levels)
-const inventorySchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true,
-    unique: true,
-    index: true
-  },
-  currentStock: {
-    type: Number,
-    required: true,
-    default: 0,
-    min: 0
-  },
-  reservedStock: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  availableStock: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  minStock: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  maxStock: {
-    type: Number,
-    default: 1000
-  },
-  reorderPoint: {
-    type: Number,
-    default: 10,
-    min: 0
-  },
-  reorderQuantity: {
-    type: Number,
-    default: 100,
-    min: 1
-  },
-  averageCost: {
-    type: Number,
-    default: 0
-  },
-  lastCost: {
-    type: Number,
-    default: 0
-  },
-  location: {
-    type: String,
-    default: 'main'
-  },
-  lastMovement: {
-    type: Date,
-    default: Date.now
-  },
-  lastStockTake: {
-    type: Date
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  needsReorder: {
-    type: Boolean,
-    default: false
+  static async create(data: Omit<NewStockMovement, 'id' | 'createdAt' | 'updatedAt'>): Promise<StockMovementType> {
+    try {
+      const result = await db.insert(stockMovements).values({
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      return result[0]
+    } catch (error) {
+      console.error('Error creating stock movement:', error)
+      throw error
+    }
   }
-}, {
-  timestamps: true
-})
 
-// Supplier Schema
-const supplierSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 200
-  },
-  code: {
-    type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    maxlength: 50
-  },
-  contactPerson: {
-    type: String,
-    trim: true,
-    maxlength: 100
-  },
-  email: {
-    type: String,
-    trim: true,
-    lowercase: true
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    postalCode: String,
-    country: { type: String, default: 'Thailand' }
-  },
-  paymentTerms: {
-    type: String,
-    enum: ['cash', 'net7', 'net15', 'net30', 'net60'],
-    default: 'net30'
-  },
-  currency: {
-    type: String,
-    default: 'THB'
-  },
-  taxId: {
-    type: String,
-    trim: true
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  rating: {
-    type: Number,
-    min: 1,
-    max: 5,
-    default: 3
-  },
-  notes: {
-    type: String,
-    maxlength: 1000
+  static async createMovement(data: {
+    productId: string,
+    type: MovementType,
+    quantity: number,
+    unitCost?: number,
+    reference?: string,
+    reason?: string,
+    userId: string,
+    batchNumber?: string,
+    expiryDate?: string
+  }): Promise<StockMovementType> {
+    try {
+      // Get current inventory
+      let inventoryRecord = await InventoryModel.findOne({ productId: data.productId })
+      if (!inventoryRecord) {
+        inventoryRecord = await InventoryModel.create({ productId: data.productId, currentStock: 0 })
+      }
+      
+      const previousStock = inventoryRecord.currentStock
+      const newStock = previousStock + (data.type === MovementType.SALE || 
+                                       data.type === MovementType.DAMAGE || 
+                                       data.type === MovementType.EXPIRED ? -data.quantity : data.quantity)
+      
+      const movement = await this.create({
+        ...data,
+        previousStock,
+        newStock,
+        totalCost: (data.unitCost || 0) * data.quantity
+      })
+      
+      // Update inventory
+      if (data.type === MovementType.SALE || 
+          data.type === MovementType.DAMAGE || 
+          data.type === MovementType.EXPIRED) {
+        await InventoryModel.removeStock(data.productId, data.quantity)
+      } else {
+        await InventoryModel.addStock(data.productId, data.quantity, data.unitCost)
+      }
+      
+      return movement
+    } catch (error) {
+      console.error('Error creating movement:', error)
+      throw error
+    }
   }
-}, {
-  timestamps: true
-})
-
-// Purchase Order Schema
-const purchaseOrderSchema = new mongoose.Schema({
-  orderNumber: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  supplierId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Supplier',
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'sent', 'confirmed', 'partial', 'received', 'cancelled'],
-    default: 'draft'
-  },
-  items: [{
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    unitCost: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-    totalCost: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-    receivedQuantity: {
-      type: Number,
-      default: 0,
-      min: 0
-    },
-    notes: String
-  }],
-  subtotal: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  taxAmount: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  discountAmount: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  shippingAmount: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  totalAmount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  currency: {
-    type: String,
-    default: 'THB'
-  },
-  expectedDate: {
-    type: Date
-  },
-  receivedDate: {
-    type: Date
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  approvedAt: {
-    type: Date
-  },
-  notes: {
-    type: String,
-    maxlength: 1000
-  }
-}, {
-  timestamps: true
-})
-
-// Stock Alert Schema
-const stockAlertSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['low_stock', 'out_of_stock', 'overstock', 'expiry_warning'],
-    required: true
-  },
-  message: {
-    type: String,
-    required: true
-  },
-  currentStock: {
-    type: Number,
-    required: true
-  },
-  threshold: {
-    type: Number,
-    required: true
-  },
-  severity: {
-    type: String,
-    enum: ['info', 'warning', 'critical'],
-    default: 'warning'
-  },
-  isRead: {
-    type: Boolean,
-    default: false
-  },
-  readBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  readAt: {
-    type: Date
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-}, {
-  timestamps: true
-})
-
-// Indexes for performance
-stockMovementSchema.index({ productId: 1, createdAt: -1 })
-stockMovementSchema.index({ type: 1, createdAt: -1 })
-stockMovementSchema.index({ reference: 1 })
-stockMovementSchema.index({ userId: 1, createdAt: -1 })
-
-inventorySchema.index({ needsReorder: 1, isActive: 1 })
-inventorySchema.index({ currentStock: 1 })
-inventorySchema.index({ lastMovement: -1 })
-
-supplierSchema.index({ name: 1 })
-supplierSchema.index({ code: 1 })
-supplierSchema.index({ isActive: 1 })
-
-purchaseOrderSchema.index({ orderNumber: 1 })
-purchaseOrderSchema.index({ supplierId: 1, createdAt: -1 })
-purchaseOrderSchema.index({ status: 1, createdAt: -1 })
-purchaseOrderSchema.index({ createdBy: 1, createdAt: -1 })
-
-stockAlertSchema.index({ productId: 1, type: 1, isActive: 1 })
-stockAlertSchema.index({ isRead: 1, severity: 1, createdAt: -1 })
-
-// Virtual fields
-inventorySchema.virtual('stockValue').get(function() {
-  return this.currentStock * this.averageCost
-})
-
-inventorySchema.virtual('turnoverDays').get(function() {
-  // Calculate based on average daily sales (placeholder - would come from sales data)
-  const avgDailySales = 1 // This would be calculated from actual sales data
-  return this.currentStock / Math.max(1, avgDailySales)
-})
-
-// Pre-save middleware
-inventorySchema.pre('save', function() {
-  this.availableStock = Math.max(0, this.currentStock - this.reservedStock)
-  this.needsReorder = this.currentStock <= this.reorderPoint
-})
-
-// Methods
-inventorySchema.methods.addStock = function(quantity: number, unitCost: number = 0) {
-  const oldStock = this.currentStock
-  this.currentStock += quantity
-  
-  // Update average cost using weighted average
-  if (unitCost > 0 && quantity > 0) {
-    const totalValue = (oldStock * this.averageCost) + (quantity * unitCost)
-    const totalQuantity = oldStock + quantity
-    this.averageCost = totalValue / totalQuantity
-    this.lastCost = unitCost
-  }
-  
-  this.lastMovement = new Date()
 }
 
-inventorySchema.methods.removeStock = function(quantity: number) {
-  if (quantity > this.availableStock) {
-    throw new Error('Insufficient stock available')
+export class InventoryModel {
+  static async findOne(criteria: Partial<InventoryType>): Promise<InventoryType | null> {
+    try {
+      if ('productId' in criteria && criteria.productId) {
+        const result = await db.select().from(inventory).where(eq(inventory.productId, criteria.productId)).limit(1)
+        return result[0] || null
+      }
+      if ('id' in criteria && criteria.id) {
+        const result = await db.select().from(inventory).where(eq(inventory.id, criteria.id)).limit(1)
+        return result[0] || null
+      }
+      return null
+    } catch (error) {
+      console.error('Error finding inventory:', error)
+      return null
+    }
   }
-  
-  this.currentStock -= quantity
-  this.lastMovement = new Date()
+
+  static async create(data: Omit<NewInventory, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryType> {
+    try {
+      const result = await db.insert(inventory).values({
+        ...data,
+        availableStock: Math.max(0, (data.currentStock || 0) - (data.reservedStock || 0)),
+        needsReorder: (data.currentStock || 0) <= (data.reorderPoint || 10),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      return result[0]
+    } catch (error) {
+      console.error('Error creating inventory:', error)
+      throw error
+    }
+  }
+
+  static async addStock(productId: string, quantity: number, unitCost: number = 0): Promise<void> {
+    try {
+      let inventoryRecord = await this.findOne({ productId })
+      
+      if (!inventoryRecord) {
+        inventoryRecord = await this.create({ productId, currentStock: 0 })
+      }
+      
+      const oldStock = inventoryRecord.currentStock
+      const newStock = oldStock + quantity
+      
+      let newAverageCost = inventoryRecord.averageCost
+      if (unitCost > 0 && quantity > 0) {
+        const totalValue = (oldStock * inventoryRecord.averageCost) + (quantity * unitCost)
+        const totalQuantity = oldStock + quantity
+        newAverageCost = totalValue / totalQuantity
+      }
+      
+      await db.update(inventory)
+        .set({
+          currentStock: newStock,
+          availableStock: Math.max(0, newStock - inventoryRecord.reservedStock),
+          averageCost: newAverageCost,
+          lastCost: unitCost > 0 ? unitCost : inventoryRecord.lastCost,
+          lastMovement: new Date().toISOString(),
+          needsReorder: newStock <= inventoryRecord.reorderPoint,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(inventory.id, inventoryRecord.id))
+    } catch (error) {
+      console.error('Error adding stock:', error)
+      throw error
+    }
+  }
+
+  static async removeStock(productId: string, quantity: number): Promise<void> {
+    try {
+      const inventoryRecord = await this.findOne({ productId })
+      
+      if (!inventoryRecord) {
+        throw new Error('Inventory record not found')
+      }
+      
+      if (quantity > inventoryRecord.availableStock) {
+        throw new Error('Insufficient stock available')
+      }
+      
+      const newStock = inventoryRecord.currentStock - quantity
+      
+      await db.update(inventory)
+        .set({
+          currentStock: newStock,
+          availableStock: Math.max(0, newStock - inventoryRecord.reservedStock),
+          lastMovement: new Date().toISOString(),
+          needsReorder: newStock <= inventoryRecord.reorderPoint,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(inventory.id, inventoryRecord.id))
+    } catch (error) {
+      console.error('Error removing stock:', error)
+      throw error
+    }
+  }
+
+  static async find(criteria: Partial<InventoryType> = {}): Promise<InventoryType[]> {
+    try {
+      if (Object.keys(criteria).length === 0) {
+        return await db.select().from(inventory)
+      }
+      
+      let result = await db.select().from(inventory)
+      
+      if ('needsReorder' in criteria && typeof criteria.needsReorder === 'boolean') {
+        result = result.filter((item: any) => item.needsReorder === criteria.needsReorder)
+      }
+      if ('isActive' in criteria && typeof criteria.isActive === 'boolean') {
+        result = result.filter((item: any) => item.isActive === criteria.isActive)
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error finding inventory:', error)
+      return []
+    }
+  }
 }
 
-inventorySchema.methods.reserveStock = function(quantity: number) {
-  if (quantity > this.availableStock) {
-    throw new Error('Insufficient stock available for reservation')
+export class SupplierModel {
+  static async find(criteria: Partial<SupplierType> = {}): Promise<SupplierType[]> {
+    try {
+      if (Object.keys(criteria).length === 0) {
+        return await db.select().from(suppliers)
+      }
+      
+      let result = await db.select().from(suppliers)
+      
+      if ('isActive' in criteria && typeof criteria.isActive === 'boolean') {
+        result = result.filter((item: any) => item.isActive === criteria.isActive)
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error finding suppliers:', error)
+      return []
+    }
   }
-  
-  this.reservedStock += quantity
+
+  static async create(data: Omit<NewSupplier, 'id' | 'createdAt' | 'updatedAt'>): Promise<SupplierType> {
+    try {
+      const result = await db.insert(suppliers).values({
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      return result[0]
+    } catch (error) {
+      console.error('Error creating supplier:', error)
+      throw error
+    }
+  }
 }
 
-inventorySchema.methods.releaseReservation = function(quantity: number) {
-  this.reservedStock = Math.max(0, this.reservedStock - quantity)
+export class PurchaseOrderModel {
+  static async find(criteria: Partial<PurchaseOrderType> = {}): Promise<PurchaseOrderType[]> {
+    try {
+      if (Object.keys(criteria).length === 0) {
+        return await db.select().from(purchaseOrders)
+      }
+      
+      let result = await db.select().from(purchaseOrders)
+      
+      if ('status' in criteria && criteria.status) {
+        result = result.filter((item: any) => item.status === criteria.status)
+      }
+      if ('supplierId' in criteria && criteria.supplierId) {
+        result = result.filter((item: any) => item.supplierId === criteria.supplierId)
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error finding purchase orders:', error)
+      return []
+    }
+  }
+
+  static async create(data: Omit<NewPurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<PurchaseOrderType> {
+    try {
+      const result = await db.insert(purchaseOrders).values({
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      return result[0]
+    } catch (error) {
+      console.error('Error creating purchase order:', error)
+      throw error
+    }
+  }
 }
 
-// Static methods
-stockMovementSchema.statics.createMovement = async function(data: {
-  productId: string,
-  type: MovementType,
-  quantity: number,
-  unitCost?: number,
-  reference?: string,
-  reason?: string,
-  userId: string,
-  batchNumber?: string,
-  expiryDate?: Date
-}) {
-  const Inventory = mongoose.model('Inventory')
-  
-  // Get current inventory
-  let inventory = await Inventory.findOne({ productId: data.productId })
-  if (!inventory) {
-    inventory = new Inventory({ productId: data.productId, currentStock: 0 })
+export class StockAlertModel {
+  static async find(criteria: Partial<StockAlertType> = {}): Promise<StockAlertType[]> {
+    try {
+      if (Object.keys(criteria).length === 0) {
+        return await db.select().from(stockAlerts)
+      }
+      
+      let result = await db.select().from(stockAlerts)
+      
+      if ('isActive' in criteria && typeof criteria.isActive === 'boolean') {
+        result = result.filter((item: any) => item.isActive === criteria.isActive)
+      }
+      if ('isRead' in criteria && typeof criteria.isRead === 'boolean') {
+        result = result.filter((item: any) => item.isRead === criteria.isRead)
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error finding stock alerts:', error)
+      return []
+    }
   }
-  
-  const previousStock = inventory.currentStock
-  const movement = new this({
-    ...data,
-    previousStock,
-    newStock: previousStock + (data.type === MovementType.SALE || 
-                             data.type === MovementType.DAMAGE || 
-                             data.type === MovementType.EXPIRED ? -data.quantity : data.quantity),
-    totalCost: (data.unitCost || 0) * data.quantity
-  })
-  
-  // Update inventory
-  if (data.type === MovementType.SALE || 
-      data.type === MovementType.DAMAGE || 
-      data.type === MovementType.EXPIRED) {
-    inventory.removeStock(data.quantity)
-  } else {
-    inventory.addStock(data.quantity, data.unitCost)
+
+  static async create(data: Omit<NewStockAlert, 'id' | 'createdAt' | 'updatedAt'>): Promise<StockAlertType> {
+    try {
+      const result = await db.insert(stockAlerts).values({
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning()
+      
+      return result[0]
+    } catch (error) {
+      console.error('Error creating stock alert:', error)
+      throw error
+    }
   }
-  
-  await inventory.save()
-  await movement.save()
-  
-  return movement
 }
 
 // Export models
-export const StockMovement = mongoose.models.StockMovement || mongoose.model('StockMovement', stockMovementSchema)
-export const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', inventorySchema)
-export const Supplier = mongoose.models.Supplier || mongoose.model('Supplier', supplierSchema)
-export const PurchaseOrder = mongoose.models.PurchaseOrder || mongoose.model('PurchaseOrder', purchaseOrderSchema)
-export const StockAlert = mongoose.models.StockAlert || mongoose.model('StockAlert', stockAlertSchema)
+export const StockMovement = StockMovementModel
+export const Inventory = InventoryModel
+export const Supplier = SupplierModel
+export const PurchaseOrder = PurchaseOrderModel
+export const StockAlert = StockAlertModel

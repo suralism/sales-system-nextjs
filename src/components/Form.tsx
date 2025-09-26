@@ -1,7 +1,12 @@
 import React, { forwardRef } from 'react'
+import { Input as AntInput, Select as AntSelect, Form as AntForm, Typography } from 'antd'
+import { CaretDownOutlined } from '@ant-design/icons'
+
+const { TextArea } = AntInput
+const { Text } = Typography
 
 // Input component with enhanced mobile support
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends React.ComponentProps<typeof AntInput> {
   label?: string
   error?: string
   helper?: string
@@ -10,7 +15,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   fullWidth?: boolean
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(({
+export const Input = forwardRef<any, InputProps>(({
   label,
   error,
   helper,
@@ -18,55 +23,39 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   rightIcon,
   fullWidth = false,
   className = '',
+  style,
   ...props
 }, ref) => {
-  const inputClasses = `
-    w-full px-4 py-3 text-base border rounded-xl transition-all duration-200
-    focus:outline-none focus:ring-2 focus:border-transparent
-    disabled:bg-gray-100 disabled:text-gray-400
-    ${error 
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-    }
-    ${leftIcon ? 'pl-12' : ''}
-    ${rightIcon ? 'pr-12' : ''}
-    min-h-[44px] touch-manipulation
-  `
+  const inputStyle = {
+    width: fullWidth ? '100%' : undefined,
+    ...style
+  }
 
   return (
-    <div className={`${fullWidth ? 'w-full' : ''} space-y-1`}>
+    <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
           {label}
-        </label>
+        </Text>
       )}
-      <div className="relative">
-        {leftIcon && (
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            {leftIcon}
-          </div>
-        )}
-        <input
-          ref={ref}
-          className={`${inputClasses} ${className}`.replace(/\s+/g, ' ').trim()}
-          {...props}
-        />
-        {rightIcon && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            {rightIcon}
-          </div>
-        )}
-      </div>
+      <AntInput
+        ref={ref}
+        className={className}
+        style={inputStyle}
+        status={error ? 'error' : undefined}
+        prefix={leftIcon}
+        suffix={rightIcon}
+        {...props}
+      />
       {error && (
-        <p className="text-sm text-red-600 mt-1 flex items-center">
-          <span className="mr-1">⚠️</span>
-          {error}
-        </p>
+        <Text type="danger" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
+          ⚠️ {error}
+        </Text>
       )}
       {helper && !error && (
-        <p className="text-sm text-gray-500 mt-1">
+        <Text type="secondary" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
           {helper}
-        </p>
+        </Text>
       )}
     </div>
   )
@@ -75,7 +64,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
 Input.displayName = 'Input'
 
 // Select component with mobile-friendly dropdown
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps extends React.ComponentProps<typeof AntSelect> {
   label?: string
   error?: string
   helper?: string
@@ -84,7 +73,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   placeholder?: string
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
+export const Select = forwardRef<any, SelectProps>(({
   label,
   error,
   helper,
@@ -92,63 +81,40 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   fullWidth = false,
   placeholder,
   className = '',
+  style,
   ...props
 }, ref) => {
-  const selectClasses = `
-    w-full px-4 py-3 text-base border rounded-xl transition-all duration-200 bg-white
-    focus:outline-none focus:ring-2 focus:border-transparent appearance-none
-    disabled:bg-gray-100 disabled:text-gray-400
-    ${error 
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-    }
-    min-h-[44px] touch-manipulation pr-12
-  `
+  const selectStyle = {
+    width: fullWidth ? '100%' : undefined,
+    ...style
+  }
 
   return (
-    <div className={`${fullWidth ? 'w-full' : ''} space-y-1`}>
+    <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
           {label}
-        </label>
+        </Text>
       )}
-      <div className="relative">
-        <select
-          ref={ref}
-          className={`${selectClasses} ${className}`.replace(/\s+/g, ' ').trim()}
-          {...props}
-        >
-          {placeholder && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {options.map((option) => (
-            <option 
-              key={option.value} 
-              value={option.value}
-              disabled={option.disabled}
-            >
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
+      <AntSelect
+        ref={ref}
+        className={className}
+        style={selectStyle}
+        status={error ? 'error' : undefined}
+        placeholder={placeholder}
+        suffixIcon={<CaretDownOutlined />}
+        options={options}
+        {...props}
+      />
       {error && (
-        <p className="text-sm text-red-600 mt-1 flex items-center">
-          <span className="mr-1">⚠️</span>
-          {error}
-        </p>
+        <Text type="danger" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
+          ⚠️ {error}
+        </Text>
       )}
       {helper && !error && (
-        <p className="text-sm text-gray-500 mt-1">
+        <Text type="secondary" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
           {helper}
-        </p>
+        </Text>
       )}
     </div>
   )
@@ -157,7 +123,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
 Select.displayName = 'Select'
 
 // Textarea component
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps extends React.ComponentProps<typeof TextArea> {
   label?: string
   error?: string
   helper?: string
@@ -165,49 +131,45 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   resize?: boolean
 }
 
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
+export const Textarea = forwardRef<any, TextareaProps>(({
   label,
   error,
   helper,
   fullWidth = false,
   resize = true,
   className = '',
+  style,
   ...props
 }, ref) => {
-  const textareaClasses = `
-    w-full px-4 py-3 text-base border rounded-xl transition-all duration-200
-    focus:outline-none focus:ring-2 focus:border-transparent
-    disabled:bg-gray-100 disabled:text-gray-400
-    ${error 
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-    }
-    ${resize ? 'resize-y' : 'resize-none'}
-    min-h-[100px] touch-manipulation
-  `
+  const textareaStyle: React.CSSProperties = {
+    width: fullWidth ? '100%' : undefined,
+    minHeight: '100px',
+    ...style
+  }
 
   return (
-    <div className={`${fullWidth ? 'w-full' : ''} space-y-1`}>
+    <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
           {label}
-        </label>
+        </Text>
       )}
-      <textarea
+      <TextArea
         ref={ref}
-        className={`${textareaClasses} ${className}`.replace(/\s+/g, ' ').trim()}
+        className={className}
+        style={textareaStyle}
+        status={error ? 'error' : undefined}
         {...props}
       />
       {error && (
-        <p className="text-sm text-red-600 mt-1 flex items-center">
-          <span className="mr-1">⚠️</span>
-          {error}
-        </p>
+        <Text type="danger" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
+          ⚠️ {error}
+        </Text>
       )}
       {helper && !error && (
-        <p className="text-sm text-gray-500 mt-1">
+        <Text type="secondary" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
           {helper}
-        </p>
+        </Text>
       )}
     </div>
   )
@@ -216,15 +178,15 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
 Textarea.displayName = 'Textarea'
 
 // Form wrapper component
-interface FormProps extends React.FormHTMLAttributes<HTMLFormElement> {
+interface FormProps extends React.ComponentProps<typeof AntForm> {
   children: React.ReactNode
 }
 
 export const Form: React.FC<FormProps> = ({ children, className = '', ...props }) => {
   return (
-    <form className={`space-y-6 ${className}`} {...props}>
+    <AntForm layout="vertical" className={className} {...props}>
       {children}
-    </form>
+    </AntForm>
   )
 }
 
@@ -243,16 +205,20 @@ export const FormGroup: React.FC<FormGroupProps> = ({
   description 
 }) => {
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`ant-form-group ${className}`} style={{ marginBottom: 24 }}>
       {title && (
-        <div className="border-b border-gray-200 pb-2">
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <div style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: 8, marginBottom: 16 }}>
+          <Text strong style={{ fontSize: '16px', display: 'block' }}>
+            {title}
+          </Text>
           {description && (
-            <p className="text-sm text-gray-600 mt-1">{description}</p>
+            <Text type="secondary" style={{ fontSize: '14px', display: 'block', marginTop: 4 }}>
+              {description}
+            </Text>
           )}
         </div>
       )}
-      <div className="space-y-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {children}
       </div>
     </div>
